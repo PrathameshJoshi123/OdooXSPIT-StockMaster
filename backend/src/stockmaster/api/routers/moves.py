@@ -3,58 +3,44 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ... import schemas, models
+from ... import schemas
 from ...deps import get_db, get_current_user
+from ...services import moves as moves_service
+from sqlalchemy.exc import NoResultFound
 
 router = APIRouter(prefix="/moves", tags=["moves"])
 
 
 @router.post("/", response_model=schemas.StockMoveOut, status_code=status.HTTP_201_CREATED)
 def create_move(mv_in: schemas.StockMoveCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    mv = models.StockMove(
-        product_id=mv_in.product_id,
-        source_loc_id=mv_in.source_loc_id,
-        dest_loc_id=mv_in.dest_loc_id,
-        quantity=mv_in.quantity,
-    )
-    db.add(mv)
-    db.commit()
-    db.refresh(mv)
-    return mv
+    return moves_service.create_move(db, mv_in)
 
 
 @router.get("/", response_model=List[schemas.StockMoveOut])
 def list_moves(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.StockMove).order_by(models.StockMove.date.desc()).offset(skip).limit(limit).all()
+    return moves_service.list_moves(db, skip=skip, limit=limit)
 
 
 @router.get("/{move_id}", response_model=schemas.StockMoveOut)
 def get_move(move_id: int, db: Session = Depends(get_db)):
-    mv = db.query(models.StockMove).get(move_id)
-    if not mv:
+    try:
+        return moves_service.get_move(db, move_id)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="StockMove not found")
-    return mv
 
 
 @router.put("/{move_id}", response_model=schemas.StockMoveOut)
 def update_move(move_id: int, changes: schemas.StockMoveUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    mv = db.query(models.StockMove).get(move_id)
-    if not mv:
+    try:
+        return moves_service.update_move(db, move_id, changes)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="StockMove not found")
-    for k, v in changes.__dict__.items():
-        if v is not None and hasattr(mv, k):
-            setattr(mv, k, v)
-    db.add(mv)
-    db.commit()
-    db.refresh(mv)
-    return mv
 
 
 @router.delete("/{move_id}")
 def delete_move(move_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    mv = db.query(models.StockMove).get(move_id)
-    if not mv:
+    try:
+        moves_service.delete_move(db, move_id)
+        return {"detail": "deleted"}
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="StockMove not found")
-    db.delete(mv)
-    db.commit()
-    return {"detail": "deleted"}

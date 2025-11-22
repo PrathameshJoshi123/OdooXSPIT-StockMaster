@@ -3,53 +3,44 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from ... import schemas, models
+from ... import schemas
 from ...deps import get_db, get_current_user
+from ...services import warehouses as warehouses_service
+from sqlalchemy.exc import NoResultFound
 
 router = APIRouter(prefix="/warehouses", tags=["warehouses"])
 
 
 @router.post("/", response_model=schemas.WarehouseOut, status_code=status.HTTP_201_CREATED)
 def create_warehouse(w_in: schemas.WarehouseCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    w = models.Warehouse(name=w_in.name, address=w_in.address)
-    db.add(w)
-    db.commit()
-    db.refresh(w)
-    return w
+    return warehouses_service.create_warehouse(db, w_in)
 
 
 @router.get("/", response_model=List[schemas.WarehouseOut])
 def list_warehouses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return db.query(models.Warehouse).offset(skip).limit(limit).all()
+    return warehouses_service.list_warehouses(db, skip=skip, limit=limit)
 
 
 @router.get("/{w_id}", response_model=schemas.WarehouseOut)
 def get_warehouse(w_id: int, db: Session = Depends(get_db)):
-    w = db.query(models.Warehouse).get(w_id)
-    if not w:
+    try:
+        return warehouses_service.get_warehouse(db, w_id)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="Warehouse not found")
-    return w
 
 
 @router.put("/{w_id}", response_model=schemas.WarehouseOut)
 def update_warehouse(w_id: int, changes: schemas.WarehouseUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    w = db.query(models.Warehouse).get(w_id)
-    if not w:
+    try:
+        return warehouses_service.update_warehouse(db, w_id, changes)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="Warehouse not found")
-    for k, v in changes.__dict__.items():
-        if v is not None and hasattr(w, k):
-            setattr(w, k, v)
-    db.add(w)
-    db.commit()
-    db.refresh(w)
-    return w
 
 
 @router.delete("/{w_id}")
 def delete_warehouse(w_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    w = db.query(models.Warehouse).get(w_id)
-    if not w:
+    try:
+        warehouses_service.delete_warehouse(db, w_id)
+        return {"detail": "deleted"}
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="Warehouse not found")
-    db.delete(w)
-    db.commit()
-    return {"detail": "deleted"}
