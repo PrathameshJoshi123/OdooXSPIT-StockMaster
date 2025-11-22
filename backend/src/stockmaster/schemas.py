@@ -202,3 +202,72 @@ class WarehouseOut(WarehouseCreate):
     id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class WarehouseUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+
+
+class LocationCreate(LocationBase):
+    pass
+
+
+class LocationUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[LocationType] = None
+
+
+class StockMoveCreate(BaseModel):
+    product_id: int
+    source_loc_id: Optional[int]
+    dest_loc_id: Optional[int]
+    quantity: Decimal
+
+
+class StockMoveUpdate(BaseModel):
+    quantity: Optional[Decimal] = None
+    source_loc_id: Optional[int] = None
+    dest_loc_id: Optional[int] = None
+
+
+class StockQuantCreate(BaseModel):
+    product_id: int
+    location_id: int
+    quantity: Decimal
+
+
+class StockQuantUpdate(BaseModel):
+    quantity: Optional[Decimal] = None
+    reserved_qty: Optional[Decimal] = None
+
+
+class StockLedgerCreate(BaseModel):
+    product_id: int
+    location_id: Optional[int]
+    change_qty: Decimal
+    resulting_qty: Decimal
+    move_id: Optional[int]
+    operation_id: Optional[int]
+    performed_by_id: Optional[int]
+    reason: Optional[str]
+
+
+class StockLedgerUpdate(BaseModel):
+    reason: Optional[str] = None
+
+
+class PartnerUpdate(BaseModel):
+    name: Optional[str] = None
+    partner_type: Optional[PartnerType] = None
+    contact: Optional[str] = None
+
+
+class ReorderRuleUpdate(BaseModel):
+    min_qty: Optional[Decimal] = None
+    max_qty: Optional[Decimal] = None
+    reorder_qty: Optional[Decimal] = None
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
