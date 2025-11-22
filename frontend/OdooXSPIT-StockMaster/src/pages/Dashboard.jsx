@@ -85,33 +85,67 @@ export default function Dashboard({ theme, onToggleTheme }) {
         const resp = await api.request("/dashboard/kpis", { headers });
 
         // Map backend response to UI-friendly structure
+        // Be defensive: the backend may return different shapes (top-level, nested by type, or generic operations)
+        const ops = resp.operations || {};
+        const receiptsResp = resp.receipts || {};
+        const deliveriesResp = resp.deliveries || {};
+
         const mapped = {
           kpis: {
-            totalProducts: resp.total_products || 0,
-            lowStock: resp.low_stock_count || 0,
-            pendingReceipts: resp.pending_receipts || 0,
-            pendingDeliveries: resp.pending_deliveries || 0,
-            internalTransfers: resp.internal_transfers_scheduled || 0,
+            totalProducts:
+              resp.total_products ??
+              resp.totalProducts ??
+              resp.products_count ??
+              0,
+            lowStock: resp.low_stock_count ?? resp.lowStockCount ?? 0,
+            pendingReceipts:
+              resp.pending_receipts ??
+              receiptsResp.to_receive ??
+              receiptsResp.toReceive ??
+              0,
+            pendingDeliveries:
+              resp.pending_deliveries ??
+              deliveriesResp.to_deliver ??
+              deliveriesResp.toDeliver ??
+              0,
+            internalTransfers:
+              resp.internal_transfers_scheduled ??
+              resp.internalTransfersScheduled ??
+              0,
           },
           receipts: {
-            toReceive: resp.pending_receipts || 0,
-            late: resp.operations?.late || 0,
-            future: 0,
+            toReceive:
+              resp.pending_receipts ??
+              receiptsResp.to_receive ??
+              receiptsResp.toReceive ??
+              0,
+            late: receiptsResp.late ?? ops.late ?? 0,
+            future: receiptsResp.future ?? 0,
           },
           deliveries: {
-            toDeliver: resp.pending_deliveries || 0,
-            late: resp.operations?.late || 0,
-            waiting: resp.operations?.waiting || 0,
-            future: 0,
+            toDeliver:
+              resp.pending_deliveries ??
+              deliveriesResp.to_deliver ??
+              deliveriesResp.toDeliver ??
+              0,
+            late: deliveriesResp.late ?? ops.late ?? 0,
+            waiting: deliveriesResp.waiting ?? ops.waiting ?? 0,
+            future: deliveriesResp.future ?? 0,
           },
           internal: {
-            scheduled: resp.internal_transfers_scheduled || 0,
-            inProgress: resp.internal_in_progress || 0,
+            scheduled:
+              resp.internal_transfers_scheduled ??
+              resp.internalTransfersScheduled ??
+              0,
+            inProgress:
+              resp.internal_in_progress ?? resp.internal_in_progress ?? 0,
           },
           adjustments: {
-            approved: resp.adjustments_approved || 0,
-            pending: resp.adjustments_pending || 0,
-            rejected: resp.adjustments_rejected || 0,
+            approved:
+              resp.adjustments_approved ?? resp.adjustmentsApproved ?? 0,
+            pending: resp.adjustments_pending ?? resp.adjustmentsPending ?? 0,
+            rejected:
+              resp.adjustments_rejected ?? resp.adjustmentsRejected ?? 0,
           },
         };
 
@@ -124,6 +158,31 @@ export default function Dashboard({ theme, onToggleTheme }) {
       }
     }
     load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Load recent deliveries to show a small list on the dashboard
+  const [recentDeliveries, setRecentDeliveries] = useState([]);
+  useEffect(() => {
+    let mounted = true;
+    async function loadDeliveries() {
+      try {
+        const token = getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        // Use the new operation_type filter added on the backend
+        const ops = await api.request(
+          "/operations?limit=10&operation_type=delivery",
+          { headers }
+        );
+        if (!mounted) return;
+        setRecentDeliveries(ops || []);
+      } catch (e) {
+        // ignore silently; deliveries are optional on dashboard
+      }
+    }
+    loadDeliveries();
     return () => {
       mounted = false;
     };
@@ -333,6 +392,36 @@ export default function Dashboard({ theme, onToggleTheme }) {
             </div>
           ))}
         </section>
+
+        {/* Recent Deliveries (small list) */}
+        {recentDeliveries && recentDeliveries.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-white">
+              Recent Deliveries
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {recentDeliveries.map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/50"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                        {d.reference}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {d.source_location_name || ""} →{" "}
+                        {d.dest_location_name || ""}
+                      </p>
+                    </div>
+                    <div className="text-xs text-slate-400">{d.status}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Filters Section */}
         <section className="flex flex-wrap gap-4">

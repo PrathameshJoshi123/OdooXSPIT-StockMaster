@@ -110,6 +110,12 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const handleNavigate = (route) => {
+    try {
+      navigate(`/${route}`);
+    } catch (e) {}
+  };
+
   const commit = (updater) => {
     setReceipt((prev) => {
       if (!prev) return prev;
@@ -226,7 +232,7 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
     <div className="relative min-h-screen bg-slate-50 text-slate-900 transition dark:bg-slate-950 dark:text-white overflow-hidden">
       <NavBar
         activeRoute={"receipts"}
-        onNavigate={() => {}}
+        onNavigate={handleNavigate}
         theme={theme}
         onToggleTheme={onToggleTheme}
       />

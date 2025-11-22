@@ -39,17 +39,51 @@ export default function MoveHistory({ theme, onToggleTheme }) {
       try {
         const token = getToken();
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        // Fetch operations (to enrich move records)
-        const ops = await api.request("/operations", { headers });
-        const map = {};
-        ops.forEach((o) => (map[o.id] = o));
-        setOpsById(map);
 
         // Fetch partners so we can resolve vendor contact by partner_id
         const parts = await api.request("/partners", { headers });
 
-        // Fetch moves (limit reasonably)
-        const mv = await api.request("/moves?limit=500", { headers });
+        // Fetch moves (page through results to get all history)
+        const mv = [];
+        const pageLimit = 500;
+        let skip = 0;
+        while (true) {
+          // request a page
+          // include skip/limit explicitly so backend paging works reliably
+          const page = await api
+            .request(`/moves?limit=${pageLimit}&skip=${skip}`, { headers })
+            .catch(() => []);
+          if (!page || page.length === 0) break;
+          mv.push(...page);
+          if (page.length < pageLimit) break;
+          skip += pageLimit;
+        }
+
+        // Try to fetch a page of operations to cover recent ones
+        const opsPage = await api.request("/operations?limit=500", { headers });
+        const map = {};
+        opsPage.forEach((o) => (map[o.id] = o));
+
+        // For any move that references an operation not present in the ops page,
+        // fetch that single operation so we can enrich reliably (handles pagination gaps).
+        const missingIds = Array.from(
+          new Set(
+            mv.map((m) => m.reference_id).filter((rid) => rid && !map[rid])
+          )
+        );
+
+        if (missingIds.length > 0) {
+          const fetched = await Promise.all(
+            missingIds.map((id) =>
+              api.request(`/operations/${id}`, { headers }).catch(() => null)
+            )
+          );
+          fetched.forEach((op) => {
+            if (op && op.id) map[op.id] = op;
+          });
+        }
+
+        setOpsById(map);
 
         // Enrich moves with operation/partner/location details when available
         const enriched = mv.map((m) => {

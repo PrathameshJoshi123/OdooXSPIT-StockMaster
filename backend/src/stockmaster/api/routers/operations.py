@@ -59,6 +59,7 @@ def list_operations(
     search: Optional[str] = None,
     status: Optional[str] = None,
     partner_id: Optional[int] = None,
+    operation_type: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -67,6 +68,13 @@ def list_operations(
         q = q.filter(models.StockOperation.partner_id == partner_id)
     if status is not None:
         q = q.filter(models.StockOperation.status == status)
+    if operation_type is not None:
+        # Accept either the enum value string (e.g. 'delivery') or the OperationType enum
+        try:
+            q = q.filter(models.StockOperation.operation_type == operation_type)
+        except Exception:
+            # fallback: compare to enum value explicitly
+            q = q.filter(models.StockOperation.operation_type == operation_type)
     if search:
         like = f"%{search}%"
         q = q.filter(or_(models.StockOperation.reference.ilike(like), models.StockOperation.partner.has(models.Partner.name.ilike(like))))

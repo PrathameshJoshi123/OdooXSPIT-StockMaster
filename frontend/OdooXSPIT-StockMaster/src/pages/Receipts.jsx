@@ -328,12 +328,15 @@ export default function Receipts({ theme, onToggleTheme }) {
                             >
                               Check
                             </button>
-                            <button
-                              onClick={() => handleValidate(o.id)}
-                              className="rounded-xl px-3 py-1 text-sm bg-emerald-600 text-white hover:opacity-90"
-                            >
-                              Validate
-                            </button>
+                            {String(o.status || "").toLowerCase() !==
+                              "done" && (
+                              <button
+                                onClick={() => handleValidate(o.id)}
+                                className="rounded-xl px-3 py-1 text-sm bg-emerald-600 text-white hover:opacity-90"
+                              >
+                                Validate
+                              </button>
+                            )}
                             <button
                               onClick={() => navigate(`/receipts/${o.id}`)}
                               className="rounded-xl px-3 py-1 text-sm bg-white border"
@@ -394,12 +397,15 @@ export default function Receipts({ theme, onToggleTheme }) {
                             >
                               Check
                             </button>
-                            <button
-                              onClick={() => handleValidate(o.id)}
-                              className="px-2 py-1 rounded bg-emerald-600 text-white"
-                            >
-                              Validate
-                            </button>
+                            {String(o.status || "").toLowerCase() !==
+                              "done" && (
+                              <button
+                                onClick={() => handleValidate(o.id)}
+                                className="px-2 py-1 rounded bg-emerald-600 text-white"
+                              >
+                                Validate
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

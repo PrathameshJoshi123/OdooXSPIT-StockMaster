@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import deliveryApi from "../lib/delivery";
 import api, { getToken } from "../lib/api";
@@ -23,7 +24,15 @@ function groupByReference(moves = []) {
 }
 
 export default function Delivery({ theme, onToggleTheme }) {
-  const [activeRoute] = useState("deliveries");
+  const [activeRoute, setActiveRoute] = useState("deliveries");
+  const navigate = useNavigate();
+
+  const handleNavigate = (route) => {
+    setActiveRoute(route);
+    try {
+      navigate(`/${route}`);
+    } catch (e) {}
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [ops, setOps] = useState([]);
@@ -196,7 +205,7 @@ export default function Delivery({ theme, onToggleTheme }) {
     <div className="relative min-h-screen bg-slate-50 text-slate-900 transition dark:bg-slate-950 dark:text-white overflow-hidden">
       <NavBar
         activeRoute={activeRoute}
-        onNavigate={() => {}}
+        onNavigate={handleNavigate}
         theme={theme}
         onToggleTheme={onToggleTheme}
       />
@@ -394,12 +403,15 @@ export default function Delivery({ theme, onToggleTheme }) {
                             >
                               Check
                             </button>
-                            <button
-                              onClick={() => handleValidate(o.id)}
-                              className="px-2 py-1 rounded bg-emerald-600 text-white"
-                            >
-                              Validate
-                            </button>
+                            {String(o.status || "").toLowerCase() !==
+                              "done" && (
+                              <button
+                                onClick={() => handleValidate(o.id)}
+                                className="px-2 py-1 rounded bg-emerald-600 text-white"
+                              >
+                                Validate
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
