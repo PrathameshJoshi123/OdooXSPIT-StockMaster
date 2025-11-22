@@ -8,6 +8,7 @@ const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [loginId, setLoginId] = useState("");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [rePassword, setRePassword] = useState("");
 
@@ -17,8 +18,6 @@ const AuthPage = () => {
   const navigate = useNavigate();
 
   // --- Validation Logic (Frontend UX Feedback) ---
-  // Login ID checks [cite: image_294500.png]: 6-12 characters
-  const isLoginIdValid = loginId.length >= 6 && loginId.length <= 12;
 
   // Password checks [cite: image_294500.png]: length > 8, small/large/special char
   const isLengthValid = password.length >= 9; // "more than 8 characters" is >= 9
@@ -43,11 +42,6 @@ const AuthPage = () => {
 
     if (!isLogin) {
       // --- Frontend Sign Up Validation ---
-      if (!isLoginIdValid) {
-        setError("Login ID must be between 6 and 12 characters.");
-        runFinally(() => {});
-        return;
-      }
       if (!isLengthValid || !hasLowerCase || !hasUpperCase || !hasSpecialChar) {
         setError(
           "Password must be 9+ characters and contain a small case, large case, and special character."
@@ -67,7 +61,7 @@ const AuthPage = () => {
           const userPayload = {
             email,
             password,
-            full_name: loginId || undefined,
+            full_name: fullName || undefined,
           };
           await postJSON("/users/", userPayload);
           // Auto-login: fetch token
@@ -79,7 +73,7 @@ const AuthPage = () => {
           setSuccess("Account created and signed in. Redirecting...");
           setTimeout(() => navigate("/dashboard"), 600);
         } catch (err) {
-          setError(err?.body?.detail || err.message || "Sign up failed");
+          setError(formatApiError(err) || "Sign up failed");
         } finally {
           setLoading(false);
         }
@@ -102,7 +96,7 @@ const AuthPage = () => {
         setSuccess("Signed in. Redirecting...");
         setTimeout(() => navigate("/dashboard"), 300);
       } catch (err) {
-        setError(err?.body?.detail || err.message || "Sign in failed");
+        setError(formatApiError(err) || "Sign in failed");
       } finally {
         setLoading(false);
       }
@@ -144,7 +138,7 @@ const AuthPage = () => {
       );
       setResetStep(2);
     } catch (err) {
-      setResetError(err?.body?.detail || err.message || "Request failed");
+      setResetError(formatApiError(err) || "Request failed");
     } finally {
       setResetLoading(false);
     }
@@ -196,7 +190,7 @@ const AuthPage = () => {
         setSuccess("Password reset successful. Please sign in.");
       }, 700);
     } catch (err) {
-      setResetError(err?.body?.detail || err.message || "Reset failed");
+      setResetError(formatApiError(err) || "Reset failed");
     } finally {
       setResetLoading(false);
     }
@@ -206,6 +200,28 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+
+  // Helper: format API errors into a readable string
+  const formatApiError = (err) => {
+    if (!err) return "Unknown error";
+    // If body.detail is an array of validation errors from FastAPI
+    const body = err.body || err?.body || err;
+    const detail = body && body.detail;
+    if (Array.isArray(detail)) {
+      // join pydantic error messages
+      return detail
+        .map((d) => {
+          if (typeof d === "string") return d;
+          if (d.msg)
+            return d.msg + (d.loc ? ` (at ${d.loc.join(" -> ")})` : "");
+          return JSON.stringify(d);
+        })
+        .join("; ");
+    }
+    if (typeof body === "string") return body;
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  };
 
   return (
     <div className="relative min-h-screen bg-slate-950 overflow-hidden">
@@ -380,33 +396,25 @@ const AuthPage = () => {
                     {success && <div className="text-green-600">{success}</div>}
                   </div>
                 )}
-                {/* LOGIN ID / EMAIL ID Field */}
-                <div>
-                  <label
-                    htmlFor="loginId"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    {isLogin ? "Login Id" : "Enter Login Id"}
-                  </label>
-                  <input
-                    id="loginId"
-                    type="text"
-                    required
-                    value={loginId}
-                    onChange={(e) => setLoginId(e.target.value)}
-                    className={fieldBaseStyles}
-                  />
-                  {/* Login ID Length Feedback (Sign Up Only) */}
-                  {!isLogin && loginId.length > 0 && (
-                    <p
-                      className={`mt-1 text-xs ${
-                        isLoginIdValid ? "text-green-500" : "text-red-500"
-                      }`}
+                {/* LOGIN ID (only for Sign In) */}
+                {isLogin && (
+                  <div>
+                    <label
+                      htmlFor="loginId"
+                      className="block text-sm font-medium text-gray-700"
                     >
-                      Login ID length must be between 6 and 12 characters.
-                    </p>
-                  )}
-                </div>
+                      Login Id
+                    </label>
+                    <input
+                      id="loginId"
+                      type="text"
+                      required
+                      value={loginId}
+                      onChange={(e) => setLoginId(e.target.value)}
+                      className={fieldBaseStyles}
+                    />
+                  </div>
+                )}
 
                 {/* EMAIL ID Field (Sign Up Only) */}
                 {!isLogin && (
@@ -423,6 +431,26 @@ const AuthPage = () => {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className={fieldBaseStyles}
+                    />
+                  </div>
+                )}
+
+                {/* FULL NAME Field (Sign Up Only) */}
+                {!isLogin && (
+                  <div>
+                    <label
+                      htmlFor="fullName"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Full name
+                    </label>
+                    <input
+                      id="fullName"
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                       className={fieldBaseStyles}
                     />
                   </div>
