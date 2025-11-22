@@ -9,14 +9,19 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..core import config
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plaintext password against a stored hash using passlib.
+
+    Uses Argon2 via passlib; no manual truncation is required for Argon2.
+    """
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
+    """Hash a plaintext password using Argon2 (passlib CryptContext)."""
     return pwd_context.hash(password)
 
 

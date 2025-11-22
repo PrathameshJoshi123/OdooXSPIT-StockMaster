@@ -1,7 +1,7 @@
 """Pydantic schemas for StockMaster and validators."""
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, validator, Field, ConfigDict
 import re
 
 # Password policy: 1 uppercase, 1 lowercase, 1 digit, 1 special char
@@ -32,8 +32,7 @@ class UserOut(BaseModel):
     email: EmailStr
     full_name: Optional[str]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductBase(BaseModel):
@@ -47,8 +46,7 @@ class ProductBase(BaseModel):
 class ProductOut(ProductBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LocationBase(BaseModel):
@@ -59,8 +57,7 @@ class LocationBase(BaseModel):
 class LocationOut(LocationBase):
     id: int
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockOperationLineCreate(BaseModel):
@@ -82,8 +79,7 @@ class StockOperationLineOut(BaseModel):
     demand_qty: float
     done_qty: float
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockOperationOut(BaseModel):
@@ -95,8 +91,7 @@ class StockOperationOut(BaseModel):
     scheduled_date: Optional[datetime]
     lines: List[StockOperationLineOut]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StockMoveOut(BaseModel):
@@ -108,5 +103,4 @@ class StockMoveOut(BaseModel):
     date: datetime
     reference_id: Optional[int]
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
