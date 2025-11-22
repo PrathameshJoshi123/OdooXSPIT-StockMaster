@@ -192,6 +192,21 @@ export default function Dashboard({ theme, onToggleTheme }) {
       navigate("/profile");
       return;
     }
+    if (route === "stock") {
+      setActiveRoute("stock");
+      navigate("/stock");
+      return;
+    }
+    if (route === "settings-warehouse") {
+      setActiveRoute("settings-warehouse");
+      navigate("/warehouse");
+      return;
+    }
+    if (route === "settings-location") {
+      setActiveRoute("settings-location");
+      navigate("/location");
+      return;
+    }
     setActiveRoute(route);
   };
 

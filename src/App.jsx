@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import AuthPage from './pages/AuthPage.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Warehouse from "./pages/Warehouse";
+import Location from "./pages/Location";
+import Stock from "./pages/Stock";
 import Profile from './pages/Profile.jsx';
 import './App.css'
 
@@ -20,12 +23,16 @@ function AppContent({ theme, toggleTheme }) {
         <Routes>
           <Route path="/" element={<AuthPage />} /> 
           <Route path="/dashboard" element={<Dashboard theme={theme} onToggleTheme={toggleTheme} />} />
+          <Route path="/warehouse" element={<Warehouse theme={theme} onToggleTheme={toggleTheme} />} />
+          <Route path="/location" element={<Location theme={theme} onToggleTheme={toggleTheme} />} />
           <Route path="/profile" element={<Profile theme={theme} onToggleTheme={toggleTheme} />} />
+          <Route path="/stock" element={<Stock theme={theme} onToggleTheme={toggleTheme} />} />
         </Routes>
       </div>
     </div>
   );
 }
+
 
 export default function App() {
   const [theme, setTheme] = useState(() => {
@@ -46,6 +53,7 @@ export default function App() {
   return (
     <Router>
       <AppContent theme={theme} toggleTheme={toggleTheme} />
+      
     </Router>
   );
 }
