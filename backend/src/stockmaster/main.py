@@ -2,6 +2,8 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import os
 
 from .database import init_db
 from .api.routers import (
@@ -21,6 +23,27 @@ from .api.routers import (
 
 
 app = FastAPI(title="StockMaster")
+
+# Configure CORS for local frontend development. In production, set a
+# specific origin via the `CORS_ORIGINS` env var (comma-separated).
+origins_env = os.getenv("CORS_ORIGINS")
+if origins_env:
+    origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+else:
+    origins = [
+        "http://localhost:5173",  # Vite default
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
