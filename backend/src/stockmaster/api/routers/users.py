@@ -16,6 +16,13 @@ def list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), c
     return users_service.list_users(db, skip=skip, limit=limit)
 
 
+
+@router.get("/me", response_model=schemas.UserOut)
+def get_current_user_route(current_user=Depends(get_current_user)):
+    """Return the currently authenticated user."""
+    return current_user
+
+
 @router.get("/{user_id}", response_model=schemas.UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
