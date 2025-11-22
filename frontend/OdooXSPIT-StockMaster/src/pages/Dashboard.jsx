@@ -54,7 +54,14 @@ export default function Dashboard({ theme, onToggleTheme }) {
       navigate("/profile");
       return;
     }
+    // Navigate to a route path for operations and other sections
     setActiveRoute(route);
+    try {
+      // if the route looks like a top-level route name, navigate to it
+      navigate(`/${route}`);
+    } catch (e) {
+      // fallback: keep activeRoute only
+    }
   };
 
   const handleFilterChange = (key, value) => {
