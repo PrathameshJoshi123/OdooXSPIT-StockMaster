@@ -1,6 +1,7 @@
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import NoResultFound
+from sqlalchemy import or_
 
 from .. import models, schemas
 
@@ -18,8 +19,44 @@ def create_move(db: Session, mv_in: schemas.StockMoveCreate) -> models.StockMove
     return mv
 
 
-def list_moves(db: Session, skip: int = 0, limit: int = 100) -> List[models.StockMove]:
-    return db.query(models.StockMove).order_by(models.StockMove.date.desc()).offset(skip).limit(limit).all()
+def list_moves(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    document_type: Optional[str] = None,
+    status: Optional[str] = None,
+    warehouse_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+) -> List[models.StockMove]:
+    """Return stock moves with optional filters.
+
+    Filters supported:
+    - document_type: filters by the linked StockOperation.operation_type
+    - status: filters by the linked StockOperation.status
+    - warehouse_id: filters moves whose source or dest location belongs to the warehouse
+    - product_id: filters by product
+    """
+    q = db.query(models.StockMove)
+
+    if product_id is not None:
+        q = q.filter(models.StockMove.product_id == product_id)
+
+    if warehouse_id is not None:
+        # Match moves where either the source or dest location belongs to the given warehouse
+        q = q.filter(
+            or_(
+                models.StockMove.source_location.has(models.Location.warehouse_id == warehouse_id),
+                models.StockMove.dest_location.has(models.Location.warehouse_id == warehouse_id),
+            )
+        )
+
+    if status is not None:
+        q = q.filter(models.StockMove.reference_operation.has(models.StockOperation.status == status))
+
+    if document_type is not None:
+        q = q.filter(models.StockMove.reference_operation.has(models.StockOperation.operation_type == document_type))
+
+    return q.order_by(models.StockMove.date.desc()).offset(skip).limit(limit).all()
 
 
 def get_move(db: Session, move_id: int) -> models.StockMove:

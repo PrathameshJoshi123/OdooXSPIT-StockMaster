@@ -17,12 +17,29 @@ def create_move(mv_in: schemas.StockMoveCreate, db: Session = Depends(get_db), c
 
 
 @router.get("/", response_model=List[schemas.StockMoveOut])
-def list_moves(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return moves_service.list_moves(db, skip=skip, limit=limit)
+def list_moves(
+    skip: int = 0,
+    limit: int = 100,
+    document_type: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    warehouse_id: Optional[int] = None,
+    product_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    return moves_service.list_moves(
+        db,
+        skip=skip,
+        limit=limit,
+        document_type=document_type,
+        status=status_filter,
+        warehouse_id=warehouse_id,
+        product_id=product_id,
+    )
 
 
 @router.get("/{move_id}", response_model=schemas.StockMoveOut)
-def get_move(move_id: int, db: Session = Depends(get_db)):
+def get_move(move_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
         return moves_service.get_move(db, move_id)
     except NoResultFound:
@@ -41,6 +58,6 @@ def update_move(move_id: int, changes: schemas.StockMoveUpdate, db: Session = De
 def delete_move(move_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     try:
         moves_service.delete_move(db, move_id)
-        return {"detail": "deleted"}
     except NoResultFound:
         raise HTTPException(status_code=404, detail="StockMove not found")
+    return None
