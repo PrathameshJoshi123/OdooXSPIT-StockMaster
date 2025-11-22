@@ -1,179 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Download, Truck, Package, AlertTriangle, ArrowRightLeft, ChevronDown } from "lucide-react";
+import {
+  Download,
+  Truck,
+  Package,
+  AlertTriangle,
+  ArrowRightLeft,
+  ChevronDown,
+} from "lucide-react";
 import NavBar from "../components/NavBar";
 import ActionCard from "../components/ActionCard";
+import api, { getToken } from "../lib/api";
 
-const mockData = {
+// We'll fetch real KPI data from backend; keep a small fallback shape
+const initialFallback = {
   kpis: {
-    totalProducts: 1250,
-    lowStock: 15,
-    pendingReceipts: 8,
-    pendingDeliveries: 12,
-    internalTransfers: 3,
+    totalProducts: 0,
+    lowStock: 0,
+    pendingReceipts: 0,
+    pendingDeliveries: 0,
+    internalTransfers: 0,
   },
-  receipts: {
-    toReceive: 4,
-    late: 1,
-    future: 6,
-  },
-  deliveries: {
-    toDeliver: 4,
-    late: 1,
-    waiting: 2,
-    future: 6,
-  },
+  receipts: { toReceive: 0, late: 0, future: 0 },
+  deliveries: { toDeliver: 0, late: 0, waiting: 0, future: 0 },
+  internal: { scheduled: 0, inProgress: 0 },
+  adjustments: { approved: 0, pending: 0, rejected: 0 },
 };
 
-const kpiConfig = [
-  {
-    key: "totalProducts",
-    title: "Total Products in Stock",
-    value: mockData.kpis.totalProducts,
-    icon: Package,
-    color: "text-blue-600",
-  },
-  {
-    key: "lowStock",
-    title: "Low Stock / Out of Stock",
-    value: mockData.kpis.lowStock,
-    icon: AlertTriangle,
-    color: "text-red-500",
-  },
-  {
-    key: "pendingReceipts",
-    title: "Pending Receipts",
-    value: mockData.kpis.pendingReceipts,
-    icon: Download,
-    color: "text-green-600",
-  },
-  {
-    key: "pendingDeliveries",
-    title: "Pending Deliveries",
-    value: mockData.kpis.pendingDeliveries,
-    icon: Truck,
-    color: "text-orange-500",
-  },
-  {
-    key: "internalTransfers",
-    title: "Internal Transfers Scheduled",
-    value: mockData.kpis.internalTransfers,
-    icon: ArrowRightLeft,
-    color: "text-purple-600",
-  },
-];
+// kpiConfig is created dynamically below from `data` so it reflects live API
 
-const cardConfig = [
-  {
-    key: "receipts",
-    title: "Incoming Receipts",
-    icon: Download,
-    chip: "Inbound Flow",
-    subtitle: "Track docks, ASN, and late arrivals",
-    primary: `${mockData.receipts.toReceive} To Receive`,
-    gradient: "bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-500",
-    stats: [
-      {
-        label: "Late",
-        value: mockData.receipts.late,
-        className: "text-red-500",
-      },
-      {
-        label: "Future Operations",
-        value: mockData.receipts.future,
-        className: "text-slate-500 dark:text-slate-300",
-      },
-    ],
-    type: "Receipts",
-    status: "Ready",
-    warehouse: "Main Warehouse",
-    category: "Electronics",
-  },
-  {
-    key: "deliveries",
-    title: "Delivery Orders",
-    icon: Truck,
-    chip: "Outbound Flow",
-    subtitle: "Monitor pick, pack, and carrier handoffs",
-    primary: `${mockData.deliveries.toDeliver} To Deliver`,
-    gradient: "bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400",
-    stats: [
-      {
-        label: "Late",
-        value: mockData.deliveries.late,
-        className: "text-red-500",
-      },
-      {
-        label: "Waiting",
-        value: mockData.deliveries.waiting,
-        className: "text-orange-400",
-      },
-      {
-        label: "Future Operations",
-        value: mockData.deliveries.future,
-        className: "text-slate-500 dark:text-slate-300",
-      },
-    ],
-    type: "Delivery",
-    status: "Waiting",
-    warehouse: "Secondary Warehouse",
-    category: "Clothing",
-  },
-  // Add more mock cards for variety
-  {
-    key: "internal",
-    title: "Internal Transfers",
-    icon: ArrowRightLeft,
-    chip: "Internal Flow",
-    subtitle: "Manage warehouse-to-warehouse moves",
-    primary: "2 To Transfer",
-    gradient: "bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500",
-    stats: [
-      {
-        label: "Scheduled",
-        value: 2,
-        className: "text-purple-500",
-      },
-      {
-        label: "In Progress",
-        value: 1,
-        className: "text-blue-500",
-      },
-    ],
-    type: "Internal",
-    status: "Draft",
-    warehouse: "Main Warehouse",
-    category: "Furniture",
-  },
-  {
-    key: "adjustments",
-    title: "Inventory Adjustments",
-    icon: AlertTriangle,
-    chip: "Adjustment Flow",
-    subtitle: "Handle stock corrections and audits",
-    primary: "3 Pending",
-    gradient: "bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500",
-    stats: [
-      {
-        label: "Approved",
-        value: 1,
-        className: "text-green-500",
-      },
-      {
-        label: "Rejected",
-        value: 0,
-        className: "text-gray-500",
-      },
-    ],
-    type: "Adjustments",
-    status: "Done",
-    warehouse: "Secondary Warehouse",
-    category: "Electronics",
-  },
-];
+// cardConfig will be built from `data` so counts reflect live API values
 
 export default function Dashboard({ theme, onToggleTheme }) {
   const [activeRoute, setActiveRoute] = useState("dashboard");
+  const [data, setData] = useState(initialFallback);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     documentType: "",
     status: "",
@@ -204,6 +66,208 @@ export default function Dashboard({ theme, onToggleTheme }) {
     navigate("/");
   };
 
+  // Load KPIs from backend on mount
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = getToken();
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const resp = await api.request("/dashboard/kpis", { headers });
+
+        // Map backend response to UI-friendly structure
+        const mapped = {
+          kpis: {
+            totalProducts: resp.total_products || 0,
+            lowStock: resp.low_stock_count || 0,
+            pendingReceipts: resp.pending_receipts || 0,
+            pendingDeliveries: resp.pending_deliveries || 0,
+            internalTransfers: resp.internal_transfers_scheduled || 0,
+          },
+          receipts: {
+            toReceive: resp.pending_receipts || 0,
+            late: resp.operations?.late || 0,
+            future: 0,
+          },
+          deliveries: {
+            toDeliver: resp.pending_deliveries || 0,
+            late: resp.operations?.late || 0,
+            waiting: resp.operations?.waiting || 0,
+            future: 0,
+          },
+          internal: {
+            scheduled: resp.internal_transfers_scheduled || 0,
+            inProgress: resp.internal_in_progress || 0,
+          },
+          adjustments: {
+            approved: resp.adjustments_approved || 0,
+            pending: resp.adjustments_pending || 0,
+            rejected: resp.adjustments_rejected || 0,
+          },
+        };
+
+        if (!mounted) return;
+        setData(mapped);
+      } catch (err) {
+        setError(err.message || String(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Build UI configs based on live `data`
+  const kpiConfig = [
+    {
+      key: "totalProducts",
+      title: "Total Products in Stock",
+      value: data.kpis.totalProducts,
+      icon: Package,
+      color: "text-blue-600",
+    },
+    {
+      key: "lowStock",
+      title: "Low Stock / Out of Stock",
+      value: data.kpis.lowStock,
+      icon: AlertTriangle,
+      color: "text-red-500",
+    },
+    {
+      key: "pendingReceipts",
+      title: "Pending Receipts",
+      value: data.kpis.pendingReceipts,
+      icon: Download,
+      color: "text-green-600",
+    },
+    {
+      key: "pendingDeliveries",
+      title: "Pending Deliveries",
+      value: data.kpis.pendingDeliveries,
+      icon: Truck,
+      color: "text-orange-500",
+    },
+    {
+      key: "internalTransfers",
+      title: "Internal Transfers Scheduled",
+      value: data.kpis.internalTransfers,
+      icon: ArrowRightLeft,
+      color: "text-purple-600",
+    },
+  ];
+
+  const cardConfig = [
+    {
+      key: "receipts",
+      title: "Incoming Receipts",
+      icon: Download,
+      chip: "Inbound Flow",
+      subtitle: "Track docks, ASN, and late arrivals",
+      primary: `${data.receipts.toReceive} To Receive`,
+      gradient: "bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-500",
+      stats: [
+        { label: "Late", value: data.receipts.late, className: "text-red-500" },
+        {
+          label: "Future Operations",
+          value: data.receipts.future,
+          className: "text-slate-500 dark:text-slate-300",
+        },
+      ],
+      type: "Receipts",
+      status: "Ready",
+      warehouse: "Main Warehouse",
+      category: "Electronics",
+    },
+    {
+      key: "deliveries",
+      title: "Delivery Orders",
+      icon: Truck,
+      chip: "Outbound Flow",
+      subtitle: "Monitor pick, pack, and carrier handoffs",
+      primary: `${data.deliveries.toDeliver} To Deliver`,
+      gradient: "bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400",
+      stats: [
+        {
+          label: "Late",
+          value: data.deliveries.late,
+          className: "text-red-500",
+        },
+        {
+          label: "Waiting",
+          value: data.deliveries.waiting,
+          className: "text-orange-400",
+        },
+        {
+          label: "Future Operations",
+          value: data.deliveries.future,
+          className: "text-slate-500 dark:text-slate-300",
+        },
+      ],
+      type: "Delivery",
+      status: "Waiting",
+      warehouse: "Secondary Warehouse",
+      category: "Clothing",
+    },
+    // Keep internal/adjustments cards as before but driven by small static values
+    {
+      key: "internal",
+      title: "Internal Transfers",
+      icon: ArrowRightLeft,
+      chip: "Internal Flow",
+      subtitle: "Manage warehouse-to-warehouse moves",
+      primary: `${
+        data.internal.scheduled + data.internal.inProgress
+      } To Transfer`,
+      gradient: "bg-gradient-to-r from-purple-600 via-pink-500 to-rose-500",
+      stats: [
+        {
+          label: "Scheduled",
+          value: data.internal.scheduled,
+          className: "text-purple-500",
+        },
+        {
+          label: "In Progress",
+          value: data.internal.inProgress,
+          className: "text-blue-500",
+        },
+      ],
+      type: "Internal",
+      status: "Draft",
+      warehouse: "Main Warehouse",
+      category: "Furniture",
+    },
+    {
+      key: "adjustments",
+      title: "Inventory Adjustments",
+      icon: AlertTriangle,
+      chip: "Adjustment Flow",
+      subtitle: "Handle stock corrections and audits",
+      primary: `${data.adjustments.pending} Pending`,
+      gradient: "bg-gradient-to-r from-yellow-600 via-orange-500 to-red-500",
+      stats: [
+        {
+          label: "Approved",
+          value: data.adjustments.approved,
+          className: "text-green-500",
+        },
+        {
+          label: "Rejected",
+          value: data.adjustments.rejected || 0,
+          className: "text-gray-500",
+        },
+      ],
+      type: "Adjustments",
+      status: "Done",
+      warehouse: "Secondary Warehouse",
+      category: "Electronics",
+    },
+  ];
+
   const filteredCards = cardConfig.filter((card) => {
     return (
       (!filters.documentType || card.type === filters.documentType) &&
@@ -231,19 +295,23 @@ export default function Dashboard({ theme, onToggleTheme }) {
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 h-[calc(100vh-4rem)] overflow-y-auto no-scrollbar">
         <header className="max-w-3xl">
-         
           <h1 className="mt-3 text-3xl sm:text-4xl font-semibold text-slate-900 dark:text-white">
             Inventory Operations
           </h1>
           <p className="mt-3 text-base text-slate-500 dark:text-slate-400">
             Track receipts and deliveries with perfect clarity.
           </p>
+          {loading && <p className="text-sm text-slate-400">Loading KPIs…</p>}
+          {error && <p className="text-sm text-red-500">{error}</p>}
         </header>
 
         {/* KPI Section */}
         <section className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
           {kpiConfig.map((kpi) => (
-            <div key={kpi.key} className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/50 min-h-[6rem] flex items-center">
+            <div
+              key={kpi.key}
+              className="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/50 min-h-[6rem] flex items-center"
+            >
               <div className="flex items-center gap-3">
                 <kpi.icon size={24} className={kpi.color} />
                 <div>
@@ -264,7 +332,9 @@ export default function Dashboard({ theme, onToggleTheme }) {
           <div className="relative">
             <select
               value={filters.documentType}
-              onChange={(e) => handleFilterChange("documentType", e.target.value)}
+              onChange={(e) =>
+                handleFilterChange("documentType", e.target.value)
+              }
               className="appearance-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-2 pr-12 text-sm dark:border-slate-700 dark:bg-slate-800/50"
             >
               <option value="">All Document Types</option>

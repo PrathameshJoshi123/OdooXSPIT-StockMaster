@@ -59,6 +59,16 @@ def kpis(
         or 0
     )
 
+    # total products that have on-hand > 0
+    total_products_in_stock = (
+        db.query(func.count())
+        .select_from(models.Product)
+        .join(stock_sub, stock_sub.c.id == models.Product.id)
+        .filter(stock_sub.c.onhand > 0)
+        .scalar()
+        or 0
+    )
+
     # Pending receipts / deliveries
     pending_statuses = [models.OperationStatus.draft, models.OperationStatus.waiting, models.OperationStatus.ready]
     pending_receipts = (
@@ -87,6 +97,34 @@ def kpis(
             models.StockOperation.scheduled_date != None,
             models.StockOperation.scheduled_date > now,
         )
+        .scalar()
+        or 0
+    )
+
+    # internal transfers currently 'in progress' (waiting or ready)
+    internal_in_progress = (
+        db.query(func.count())
+        .select_from(models.StockOperation)
+        .filter(
+            models.StockOperation.operation_type == models.OperationType.internal,
+            models.StockOperation.status.in_([models.OperationStatus.waiting, models.OperationStatus.ready]),
+        )
+        .scalar()
+        or 0
+    )
+
+    # Adjustments: done = approved, not-done = pending. No explicit 'rejected' status in enums.
+    adjustments_approved = (
+        db.query(func.count())
+        .select_from(models.StockOperation)
+        .filter(models.StockOperation.operation_type == models.OperationType.adjustment, models.StockOperation.status == models.OperationStatus.done)
+        .scalar()
+        or 0
+    )
+    adjustments_pending = (
+        db.query(func.count())
+        .select_from(models.StockOperation)
+        .filter(models.StockOperation.operation_type == models.OperationType.adjustment, models.StockOperation.status != models.OperationStatus.done)
         .scalar()
         or 0
     )
