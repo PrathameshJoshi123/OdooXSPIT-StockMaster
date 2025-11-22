@@ -8,7 +8,9 @@ from .. import models, schemas
 
 
 def generate_reference(db: Session, operation_type: str) -> str:
-    like_pattern = f"{operation_type}/%"
+    # operation_type may be an Enum; use its value if so
+    op_val = getattr(operation_type, "value", operation_type)
+    like_pattern = f"{op_val}/%"
     last = (
         db.query(models.StockOperation)
         .filter(models.StockOperation.reference.like(like_pattern))
@@ -16,16 +18,17 @@ def generate_reference(db: Session, operation_type: str) -> str:
         .first()
     )
     if not last:
-        return f"{operation_type}/0001"
+        return f"{op_val}/0001"
     try:
         suffix = last.reference.rsplit("/", 1)[-1]
         num = int(suffix)
-        return f"{operation_type}/{num+1:04d}"
+        return f"{op_val}/{num+1:04d}"
     except Exception:
-        return f"{operation_type}/0001"
+        return f"{op_val}/0001"
 
 
 def create_operation(db: Session, op_in: schemas.StockOperationCreate) -> models.StockOperation:
+    # generate a human-readable reference using operation type value
     ref = generate_reference(db, op_in.operation_type)
     op = models.StockOperation(
         reference=ref,
@@ -33,6 +36,9 @@ def create_operation(db: Session, op_in: schemas.StockOperationCreate) -> models
         dest_loc_id=op_in.dest_loc_id,
         scheduled_date=op_in.scheduled_date,
         status=models.OperationStatus.draft,
+        # set operation_type and optional partner
+        operation_type=op_in.operation_type,
+        partner_id=getattr(op_in, "partner_id", None),
     )
     db.add(op)
     db.flush()
