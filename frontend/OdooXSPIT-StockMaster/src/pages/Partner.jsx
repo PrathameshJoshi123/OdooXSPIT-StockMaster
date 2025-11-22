@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import { getToken } from "../lib/api";
 
-function FormField({ label, placeholder, multiline = false, value, onChange }) {
+function FormField({ label, placeholder, value, onChange, type = "text" }) {
   const inputStyles =
     "w-full rounded-2xl border border-slate-200 bg-white/60 px-4 py-3 text-base text-slate-800 placeholder:text-slate-400 transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500/70 dark:focus:ring-indigo-500/20";
 
@@ -12,62 +12,50 @@ function FormField({ label, placeholder, multiline = false, value, onChange }) {
       <span className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
         {label}
       </span>
-      {multiline ? (
-        <textarea
-          rows={3}
-          className={`${inputStyles} resize-none`}
-          placeholder={placeholder}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      ) : (
-        <input
-          className={inputStyles}
-          placeholder={placeholder}
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-        />
-      )}
+      <input
+        className={inputStyles}
+        placeholder={placeholder}
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        type={type}
+      />
     </label>
   );
 }
 
-export default function Warehouse({ theme, onToggleTheme }) {
-  const [activeRoute, setActiveRoute] = useState("settings-warehouse");
+export default function Partner({ theme, onToggleTheme }) {
+  const [activeRoute, setActiveRoute] = useState("partners");
   const navigate = useNavigate();
-
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
-  const [warehouses, setWarehouses] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [form, setForm] = useState({ name: "", address: "" });
+  const [form, setForm] = useState({
+    name: "",
+    partner_type: "vendor",
+    contact: "",
+  });
   const [original, setOriginal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    loadWarehouses();
+    loadPartners();
   }, []);
 
-  async function loadWarehouses() {
+  async function loadPartners() {
     setLoading(true);
     setMessage(null);
     try {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`${API_BASE}/warehouses`, { headers });
-      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const res = await fetch(`${API_BASE}/partners`, { headers });
+      if (!res.ok) throw new Error(`Failed to load partners (${res.status})`);
       const data = await res.json();
-      setWarehouses(data || []);
-      if (data && data.length > 0) {
-        selectWarehouse(data[0].id, data[0]);
-      } else {
-        // clear form for new creation
-        setSelectedId(null);
-        setForm({ name: "", address: "" });
-        setOriginal(null);
-      }
+      setPartners(data || []);
+      if (data && data.length > 0 && !selectedId)
+        selectPartner(data[0].id, data[0]);
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -75,19 +63,26 @@ export default function Warehouse({ theme, onToggleTheme }) {
     }
   }
 
-  function selectWarehouse(id, obj) {
+  function selectPartner(id, obj) {
     setSelectedId(id);
     if (obj) {
-      setForm({ name: obj.name || "", address: obj.address || "" });
+      setForm({
+        name: obj.name || "",
+        partner_type: obj.partner_type || "vendor",
+        contact: obj.contact || "",
+      });
       setOriginal({ ...obj });
     } else {
-      // fetch specific
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      fetch(`${API_BASE}/warehouses/${id}`, { headers })
+      fetch(`${API_BASE}/partners/${id}`, { headers })
         .then((r) => r.json())
         .then((d) => {
-          setForm({ name: d.name || "", address: d.address || "" });
+          setForm({
+            name: d.name || "",
+            partner_type: d.partner_type || "vendor",
+            contact: d.contact || "",
+          });
           setOriginal({ ...d });
         })
         .catch((e) => setMessage({ type: "error", text: e.message }));
@@ -104,19 +99,24 @@ export default function Warehouse({ theme, onToggleTheme }) {
       navigate("/profile");
       return;
     }
-    if (route === "settings-warehouse") {
+    if (route === "warehouse") {
       setActiveRoute("settings-warehouse");
       navigate("/warehouse");
       return;
     }
-    if (route === "settings-location") {
+    if (route === "location") {
       setActiveRoute("settings-location");
       navigate("/location");
       return;
     }
-    if (route === "stock") {
-      setActiveRoute("stock");
-      navigate("/stock");
+    if (route === "products") {
+      setActiveRoute("products");
+      navigate("/products");
+      return;
+    }
+    if (route === "partners") {
+      setActiveRoute("partners");
+      navigate("/partners");
       return;
     }
     setActiveRoute(route);
@@ -127,22 +127,26 @@ export default function Warehouse({ theme, onToggleTheme }) {
     navigate("/");
   };
 
-  async function saveWarehouse() {
+  async function savePartner() {
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { name: form.name, address: form.address || null };
+      const payload = {
+        name: form.name || "",
+        partner_type: form.partner_type || "vendor",
+        contact: form.contact || null,
+      };
       const token = getToken();
       const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
       let res;
       if (selectedId) {
-        res = await fetch(`${API_BASE}/warehouses/${selectedId}`, {
+        res = await fetch(`${API_BASE}/partners/${selectedId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/warehouses/`, {
+        res = await fetch(`${API_BASE}/partners/`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
@@ -153,12 +157,15 @@ export default function Warehouse({ theme, onToggleTheme }) {
         throw new Error(`Save failed (${res.status}): ${txt}`);
       }
       const saved = await res.json();
-      setMessage({ type: "success", text: "Warehouse saved" });
-      // refresh list and select saved
-      await loadWarehouses();
+      setMessage({ type: "success", text: "Partner saved" });
+      await loadPartners();
       setSelectedId(saved.id);
       setOriginal(saved);
-      setForm({ name: saved.name || "", address: saved.address || "" });
+      setForm({
+        name: saved.name || "",
+        partner_type: saved.partner_type || "vendor",
+        contact: saved.contact || "",
+      });
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -168,10 +175,14 @@ export default function Warehouse({ theme, onToggleTheme }) {
 
   function discardChanges() {
     if (original) {
-      setForm({ name: original.name || "", address: original.address || "" });
+      setForm({
+        name: original.name || "",
+        partner_type: original.partner_type || "vendor",
+        contact: original.contact || "",
+      });
       setMessage({ type: "info", text: "Changes discarded" });
     } else {
-      setForm({ name: "", address: "" });
+      setForm({ name: "", partner_type: "vendor", contact: "" });
       setMessage({ type: "info", text: "Cleared" });
     }
   }
@@ -195,10 +206,10 @@ export default function Warehouse({ theme, onToggleTheme }) {
       <main className="relative z-10 mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col gap-6 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 no-scrollbar">
         <header className="max-w-3xl space-y-4">
           <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">
-            Warehouse
+            Partners
           </h1>
           <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            This page contains the warehouse details & location.
+            Create and manage vendors and customers.
           </p>
         </header>
 
@@ -206,7 +217,7 @@ export default function Warehouse({ theme, onToggleTheme }) {
           <header className="flex flex-col gap-4 border-b border-slate-100 pb-6 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                Warehouse Details
+                Partner Details
               </h2>
             </div>
             <div className="flex items-center gap-3">
@@ -217,18 +228,18 @@ export default function Warehouse({ theme, onToggleTheme }) {
                 className="rounded-xl border px-3 py-2"
                 value={selectedId || ""}
                 onChange={(e) =>
-                  selectWarehouse(
+                  selectPartner(
                     e.target.value,
-                    warehouses.find(
-                      (w) => String(w.id) === String(e.target.value)
+                    partners.find(
+                      (p) => String(p.id) === String(e.target.value)
                     )
                   )
                 }
               >
-                <option value="">-- New Warehouse --</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
+                <option value="">-- New Partner --</option>
+                {partners.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.partner_type})
                   </option>
                 ))}
               </select>
@@ -238,34 +249,42 @@ export default function Warehouse({ theme, onToggleTheme }) {
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             <FormField
               label="Name"
-              placeholder="Main Distribution Center"
+              placeholder="Acme Supplies"
               value={form.name}
               onChange={(v) => setForm((s) => ({ ...s, name: v }))}
             />
-            <FormField
-              label="Short Code"
-              placeholder="MDC"
-              value={form.short_code}
-              onChange={(v) => setForm((s) => ({ ...s, short_code: v }))}
-            />
-            <div className="md:col-span-2">
-              <FormField
-                label="Address"
-                placeholder="Street, city, state, and country details"
-                multiline
-                value={form.address}
-                onChange={(v) => setForm((s) => ({ ...s, address: v }))}
-              />
+            <div>
+              <label className="block space-y-2">
+                <span className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
+                  Type
+                </span>
+                <select
+                  className="w-full rounded-2xl border border-slate-200 bg-white/60 px-4 py-3"
+                  value={form.partner_type}
+                  onChange={(e) =>
+                    setForm((s) => ({ ...s, partner_type: e.target.value }))
+                  }
+                >
+                  <option value="vendor">Vendor</option>
+                  <option value="customer">Customer</option>
+                </select>
+              </label>
             </div>
+            <FormField
+              label="Contact"
+              placeholder="email or phone"
+              value={form.contact}
+              onChange={(v) => setForm((s) => ({ ...s, contact: v }))}
+            />
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <button
               disabled={saving}
-              onClick={saveWarehouse}
+              onClick={savePartner}
               className="rounded-2xl border border-transparent bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:translate-y-[-1px] hover:from-indigo-500 hover:to-purple-500"
             >
-              {saving ? "Saving..." : "Save Warehouse"}
+              {saving ? "Saving..." : "Save Partner"}
             </button>
             <button
               onClick={discardChanges}
@@ -274,7 +293,7 @@ export default function Warehouse({ theme, onToggleTheme }) {
               Discard Changes
             </button>
             <button
-              onClick={loadWarehouses}
+              onClick={() => loadPartners()}
               className="rounded-2xl border px-4 py-2 text-sm"
             >
               Refresh

@@ -1,9 +1,16 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
 import { getToken } from "../lib/api";
 
-function FormField({ label, placeholder, multiline = false, value, onChange }) {
+function FormField({
+  label,
+  placeholder,
+  multiline = false,
+  value,
+  onChange,
+  type = "text",
+}) {
   const inputStyles =
     "w-full rounded-2xl border border-slate-200 bg-white/60 px-4 py-3 text-base text-slate-800 placeholder:text-slate-400 transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:border-indigo-500/70 dark:focus:ring-indigo-500/20";
 
@@ -26,48 +33,50 @@ function FormField({ label, placeholder, multiline = false, value, onChange }) {
           placeholder={placeholder}
           value={value || ""}
           onChange={(e) => onChange(e.target.value)}
+          type={type}
         />
       )}
     </label>
   );
 }
 
-export default function Warehouse({ theme, onToggleTheme }) {
-  const [activeRoute, setActiveRoute] = useState("settings-warehouse");
+export default function Product({ theme, onToggleTheme }) {
+  const [activeRoute, setActiveRoute] = useState("products");
   const navigate = useNavigate();
-
   const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
-  const [warehouses, setWarehouses] = useState([]);
+  const [products, setProducts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [form, setForm] = useState({ name: "", address: "" });
+  const [form, setForm] = useState({
+    name: "",
+    sku: "",
+    category: "",
+    unit_price: "",
+    min_stock_level: 0,
+    uom: "",
+    initial_stock: "",
+  });
   const [original, setOriginal] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    loadWarehouses();
+    loadProducts();
   }, []);
 
-  async function loadWarehouses() {
+  async function loadProducts() {
     setLoading(true);
     setMessage(null);
     try {
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const res = await fetch(`${API_BASE}/warehouses`, { headers });
-      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const res = await fetch(`${API_BASE}/products`, { headers });
+      if (!res.ok) throw new Error(`Failed to load products (${res.status})`);
       const data = await res.json();
-      setWarehouses(data || []);
-      if (data && data.length > 0) {
-        selectWarehouse(data[0].id, data[0]);
-      } else {
-        // clear form for new creation
-        setSelectedId(null);
-        setForm({ name: "", address: "" });
-        setOriginal(null);
-      }
+      setProducts(data || []);
+      if (data && data.length > 0 && !selectedId)
+        selectProduct(data[0].id, data[0]);
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -75,19 +84,34 @@ export default function Warehouse({ theme, onToggleTheme }) {
     }
   }
 
-  function selectWarehouse(id, obj) {
+  function selectProduct(id, obj) {
     setSelectedId(id);
     if (obj) {
-      setForm({ name: obj.name || "", address: obj.address || "" });
+      setForm({
+        name: obj.name || "",
+        sku: obj.sku || "",
+        category: obj.category || "",
+        unit_price: obj.unit_price || "",
+        min_stock_level: obj.min_stock_level || 0,
+        uom: obj.uom || "",
+        initial_stock: obj.initial_stock || "",
+      });
       setOriginal({ ...obj });
     } else {
-      // fetch specific
       const token = getToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      fetch(`${API_BASE}/warehouses/${id}`, { headers })
+      fetch(`${API_BASE}/products/${id}`, { headers })
         .then((r) => r.json())
         .then((d) => {
-          setForm({ name: d.name || "", address: d.address || "" });
+          setForm({
+            name: d.name || "",
+            sku: d.sku || "",
+            category: d.category || "",
+            unit_price: d.unit_price || "",
+            min_stock_level: d.min_stock_level || 0,
+            uom: d.uom || "",
+            initial_stock: d.initial_stock || "",
+          });
           setOriginal({ ...d });
         })
         .catch((e) => setMessage({ type: "error", text: e.message }));
@@ -104,19 +128,24 @@ export default function Warehouse({ theme, onToggleTheme }) {
       navigate("/profile");
       return;
     }
-    if (route === "settings-warehouse") {
+    if (route === "warehouse") {
       setActiveRoute("settings-warehouse");
       navigate("/warehouse");
       return;
     }
-    if (route === "settings-location") {
+    if (route === "location") {
       setActiveRoute("settings-location");
       navigate("/location");
       return;
     }
-    if (route === "stock") {
-      setActiveRoute("stock");
-      navigate("/stock");
+    if (route === "products") {
+      setActiveRoute("products");
+      navigate("/products");
+      return;
+    }
+    if (route === "partners") {
+      setActiveRoute("partners");
+      navigate("/partners");
       return;
     }
     setActiveRoute(route);
@@ -127,22 +156,32 @@ export default function Warehouse({ theme, onToggleTheme }) {
     navigate("/");
   };
 
-  async function saveWarehouse() {
+  async function saveProduct() {
     setSaving(true);
     setMessage(null);
     try {
-      const payload = { name: form.name, address: form.address || null };
+      const payload = {
+        name: form.name || "",
+        sku: form.sku || "",
+        category: form.category || null,
+        unit_price: form.unit_price ? Number(form.unit_price) : null,
+        min_stock_level: form.min_stock_level
+          ? Number(form.min_stock_level)
+          : 0,
+        uom: form.uom || null,
+        initial_stock: form.initial_stock ? Number(form.initial_stock) : null,
+      };
       const token = getToken();
       const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
       let res;
       if (selectedId) {
-        res = await fetch(`${API_BASE}/warehouses/${selectedId}`, {
+        res = await fetch(`${API_BASE}/products/${selectedId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch(`${API_BASE}/warehouses/`, {
+        res = await fetch(`${API_BASE}/products/`, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
@@ -153,12 +192,19 @@ export default function Warehouse({ theme, onToggleTheme }) {
         throw new Error(`Save failed (${res.status}): ${txt}`);
       }
       const saved = await res.json();
-      setMessage({ type: "success", text: "Warehouse saved" });
-      // refresh list and select saved
-      await loadWarehouses();
+      setMessage({ type: "success", text: "Product saved" });
+      await loadProducts();
       setSelectedId(saved.id);
       setOriginal(saved);
-      setForm({ name: saved.name || "", address: saved.address || "" });
+      setForm({
+        name: saved.name || "",
+        sku: saved.sku || "",
+        category: saved.category || "",
+        unit_price: saved.unit_price || "",
+        min_stock_level: saved.min_stock_level || 0,
+        uom: saved.uom || "",
+        initial_stock: saved.initial_stock || "",
+      });
     } catch (err) {
       setMessage({ type: "error", text: err.message });
     } finally {
@@ -168,10 +214,26 @@ export default function Warehouse({ theme, onToggleTheme }) {
 
   function discardChanges() {
     if (original) {
-      setForm({ name: original.name || "", address: original.address || "" });
+      setForm({
+        name: original.name || "",
+        sku: original.sku || "",
+        category: original.category || "",
+        unit_price: original.unit_price || "",
+        min_stock_level: original.min_stock_level || 0,
+        uom: original.uom || "",
+        initial_stock: original.initial_stock || "",
+      });
       setMessage({ type: "info", text: "Changes discarded" });
     } else {
-      setForm({ name: "", address: "" });
+      setForm({
+        name: "",
+        sku: "",
+        category: "",
+        unit_price: "",
+        min_stock_level: 0,
+        uom: "",
+        initial_stock: "",
+      });
       setMessage({ type: "info", text: "Cleared" });
     }
   }
@@ -195,10 +257,10 @@ export default function Warehouse({ theme, onToggleTheme }) {
       <main className="relative z-10 mx-auto flex h-[calc(100vh-4rem)] max-w-6xl flex-col gap-6 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 no-scrollbar">
         <header className="max-w-3xl space-y-4">
           <h1 className="text-3xl font-semibold text-slate-900 dark:text-white">
-            Warehouse
+            Product Registry
           </h1>
           <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-            This page contains the warehouse details & location.
+            Create and manage products.
           </p>
         </header>
 
@@ -206,7 +268,7 @@ export default function Warehouse({ theme, onToggleTheme }) {
           <header className="flex flex-col gap-4 border-b border-slate-100 pb-6 dark:border-slate-800 md:flex-row md:items-center md:justify-between">
             <div>
               <h2 className="mt-2 text-2xl font-semibold text-slate-900 dark:text-white">
-                Warehouse Details
+                Product Details
               </h2>
             </div>
             <div className="flex items-center gap-3">
@@ -217,18 +279,18 @@ export default function Warehouse({ theme, onToggleTheme }) {
                 className="rounded-xl border px-3 py-2"
                 value={selectedId || ""}
                 onChange={(e) =>
-                  selectWarehouse(
+                  selectProduct(
                     e.target.value,
-                    warehouses.find(
-                      (w) => String(w.id) === String(e.target.value)
+                    products.find(
+                      (p) => String(p.id) === String(e.target.value)
                     )
                   )
                 }
               >
-                <option value="">-- New Warehouse --</option>
-                {warehouses.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
+                <option value="">-- New Product --</option>
+                {products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} ({p.sku})
                   </option>
                 ))}
               </select>
@@ -237,35 +299,59 @@ export default function Warehouse({ theme, onToggleTheme }) {
 
           <div className="mt-8 grid gap-6 md:grid-cols-2">
             <FormField
-              label="Name"
-              placeholder="Main Distribution Center"
+              label="Product Name"
+              placeholder="Blue Widget"
               value={form.name}
               onChange={(v) => setForm((s) => ({ ...s, name: v }))}
             />
             <FormField
-              label="Short Code"
-              placeholder="MDC"
-              value={form.short_code}
-              onChange={(v) => setForm((s) => ({ ...s, short_code: v }))}
+              label="SKU"
+              placeholder="BW-001"
+              value={form.sku}
+              onChange={(v) => setForm((s) => ({ ...s, sku: v }))}
             />
-            <div className="md:col-span-2">
-              <FormField
-                label="Address"
-                placeholder="Street, city, state, and country details"
-                multiline
-                value={form.address}
-                onChange={(v) => setForm((s) => ({ ...s, address: v }))}
-              />
-            </div>
+            <FormField
+              label="Category"
+              placeholder="Gadgets"
+              value={form.category}
+              onChange={(v) => setForm((s) => ({ ...s, category: v }))}
+            />
+            <FormField
+              label="Unit Price"
+              placeholder="0.00"
+              value={form.unit_price}
+              onChange={(v) => setForm((s) => ({ ...s, unit_price: v }))}
+              type="number"
+            />
+            <FormField
+              label="Min Stock Level"
+              placeholder="0"
+              value={form.min_stock_level}
+              onChange={(v) => setForm((s) => ({ ...s, min_stock_level: v }))}
+              type="number"
+            />
+            <FormField
+              label="Unit of Measure"
+              placeholder="pcs"
+              value={form.uom}
+              onChange={(v) => setForm((s) => ({ ...s, uom: v }))}
+            />
+            <FormField
+              label="Initial Stock"
+              placeholder="0"
+              value={form.initial_stock}
+              onChange={(v) => setForm((s) => ({ ...s, initial_stock: v }))}
+              type="number"
+            />
           </div>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <button
               disabled={saving}
-              onClick={saveWarehouse}
+              onClick={saveProduct}
               className="rounded-2xl border border-transparent bg-gradient-to-r from-indigo-600 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/30 transition hover:translate-y-[-1px] hover:from-indigo-500 hover:to-purple-500"
             >
-              {saving ? "Saving..." : "Save Warehouse"}
+              {saving ? "Saving..." : "Save Product"}
             </button>
             <button
               onClick={discardChanges}
@@ -274,7 +360,7 @@ export default function Warehouse({ theme, onToggleTheme }) {
               Discard Changes
             </button>
             <button
-              onClick={loadWarehouses}
+              onClick={() => loadProducts()}
               className="rounded-2xl border px-4 py-2 text-sm"
             >
               Refresh

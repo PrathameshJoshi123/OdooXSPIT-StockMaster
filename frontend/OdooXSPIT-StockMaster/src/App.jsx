@@ -14,6 +14,9 @@ import ReceiptsDetail from "./pages/ReceiptDetail.jsx";
 import Stock from "./pages/Stock.jsx";
 import Warehouse from "./pages/Warehouse.jsx";
 import Location from "./pages/Location.jsx";
+import MoveHistory from "./pages/MoveHistory.jsx";
+import Product from "./pages/Product.jsx";
+import Partner from "./pages/Partner.jsx";
 import "./App.css";
 
 const gradientBg =
@@ -52,6 +55,14 @@ function AppContent({ theme, toggleTheme }) {
             element={<Location theme={theme} onToggleTheme={toggleTheme} />}
           />
           <Route
+            path="/products"
+            element={<Product theme={theme} onToggleTheme={toggleTheme} />}
+          />
+          <Route
+            path="/partners"
+            element={<Partner theme={theme} onToggleTheme={toggleTheme} />}
+          />
+          <Route
             path="/receipts"
             element={<Receipts theme={theme} onToggleTheme={toggleTheme} />}
           />
@@ -64,6 +75,10 @@ function AppContent({ theme, toggleTheme }) {
           <Route
             path="/profile"
             element={<Profile theme={theme} onToggleTheme={toggleTheme} />}
+          />
+          <Route
+            path="/moves"
+            element={<MoveHistory theme={theme} onToggleTheme={toggleTheme} />}
           />
         </Routes>
       </div>

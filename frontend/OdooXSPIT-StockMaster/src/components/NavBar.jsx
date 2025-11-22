@@ -96,7 +96,7 @@ export default function NavBar({
                 Stock
               </button>
               <button
-                onClick={() => onNavigate("history")}
+                onClick={() => onNavigate("moves")}
                 className="rounded-full px-4 py-2 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
               >
                 Move History
@@ -119,6 +119,8 @@ export default function NavBar({
                   {[
                     { label: "Warehouse", route: "warehouse" },
                     { label: "Locations", route: "location" },
+                    { label: "Products", route: "products" },
+                    { label: "Partners", route: "partners" },
                   ].map((item) => (
                     <button
                       key={item.route}

@@ -28,75 +28,86 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
   const [receipt, setReceipt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [vendors, setVendors] = useState([]);
+  const [products, setProducts] = useState([]);
+
+  // load operation, partners and products
+  async function load() {
+    setLoading(true);
+    try {
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const [op, parts, prods] = await Promise.all([
+        deliveryApi.getOperation(id),
+        api.request("/partners", { headers }),
+        api.request("/products", { headers }),
+      ]);
+
+      // determine responsible (creator) name if available, else fall back to current user
+      let responsibleName = "";
+      try {
+        if (op.created_by_id) {
+          const creator = await api.request(`/users/${op.created_by_id}`, {
+            headers,
+          });
+          responsibleName = creator.full_name || creator.email || "";
+        } else {
+          const me = await api.request(`/users/me`, { headers });
+          responsibleName = me.full_name || me.email || "";
+        }
+      } catch (e) {
+        // ignore
+      }
+
+      const normalized = {
+        id: op.id,
+        reference: op.reference,
+        from: parts.find((p) => p.id === op.partner_id)?.name || "",
+        operationType: op.operation_type,
+        sourceLocationName: op.source_location_name || "",
+        destLocationName: op.dest_location_name || "",
+        source_loc_id: op.source_loc_id,
+        dest_loc_id: op.dest_loc_id,
+        partner_id: op.partner_id,
+        source_location: op.source_location_name,
+        dest_location: op.dest_location_name,
+        status:
+          (op.status || "draft").charAt(0).toUpperCase() +
+          (op.status || "").slice(1),
+        scheduleDate: op.scheduled_date,
+        scheduleDateRaw: op.scheduled_date,
+        scheduleDateFormatted: formatDate(op.scheduled_date),
+        sourceDocument: op.get?.source_document || "",
+        responsible: responsibleName || "",
+        lines: (op.lines || []).map((l) => ({
+          id: l.id,
+          product_id: l.product_id,
+          product:
+            (prods || []).find((p) => p.id === l.product_id)?.name ||
+            `#${l.product_id}`,
+          uom: "Units",
+          scheduledQty: l.demand_qty,
+          doneQty: l.done_qty,
+        })),
+      };
+
+      setReceipt(normalized);
+      setVendors(parts || []);
+      setProducts(prods || []);
+    } catch (err) {
+      console.error(err);
+      setReceipt(null);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      setLoading(true);
-      try {
-        const token = getToken();
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const [op, parts] = await Promise.all([
-          deliveryApi.getOperation(id),
-          api.request("/partners", { headers }),
-        ]);
-        // determine responsible (creator) name if available, else fall back to current user
-        let responsibleName = "";
-        try {
-          if (op.created_by_id) {
-            const creator = await api.request(`/users/${op.created_by_id}`, {
-              headers,
-            });
-            responsibleName = creator.full_name || creator.email || "";
-          } else {
-            const me = await api.request(`/users/me`, { headers });
-            responsibleName = me.full_name || me.email || "";
-          }
-        } catch (e) {
-          // ignore and leave blank
-        }
-        if (!mounted) return;
-        const normalized = {
-          id: op.id,
-          reference: op.reference,
-          from: parts.find((p) => p.id === op.partner_id)?.name || "",
-          operationType: op.operation_type,
-          sourceLocationName: op.source_location_name || "",
-          destLocationName: op.dest_location_name || "",
-          source_loc_id: op.source_loc_id,
-          dest_loc_id: op.dest_loc_id,
-          partner_id: op.partner_id,
-          source_location: op.source_location_name,
-          dest_location: op.dest_location_name,
-          status:
-            (op.status || "draft").charAt(0).toUpperCase() +
-            (op.status || "").slice(1),
-          scheduleDate: op.scheduled_date,
-          scheduleDateRaw: op.scheduled_date,
-          scheduleDateFormatted: formatDate(op.scheduled_date),
-          sourceDocument: op.get?.source_document || "",
-          responsible: responsibleName || "",
-          lines: (op.lines || []).map((l) => ({
-            id: l.id,
-            product: `#${l.product_id}`,
-            uom: "Units",
-            scheduledQty: l.demand_qty,
-            doneQty: l.done_qty,
-          })),
-        };
-        setReceipt(normalized);
-        setVendors(parts || []);
-      } catch (err) {
-        console.error(err);
-        setReceipt(null);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
     load();
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const commit = (updater) => {
@@ -123,7 +134,8 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
         ...(prev.lines || []),
         {
           id: `line-${Date.now()}`,
-          product: "New Product",
+          product_id: null,
+          product: "",
           uom: "Units",
           scheduledQty: 0,
           doneQty: 0,
@@ -146,6 +158,8 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
           : line
       ),
     }));
+    // only persist existing lines (numeric id)
+    if (typeof lineId === "string" && lineId.startsWith("line-")) return;
     const payload = {
       lines: [
         {
@@ -155,6 +169,27 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
       ],
     };
     deliveryApi.patchOperation(id, payload).catch(() => {});
+  };
+
+  // Save a newly-added line (no numeric id yet) by sending product_id + demand_qty to PATCH endpoint
+  const saveNewLine = async (tempId, productId, scheduledQty) => {
+    try {
+      setLoading(true);
+      await deliveryApi.patchOperation(id, {
+        lines: [
+          {
+            product_id: Number(productId),
+            demand_qty: Number(scheduledQty || 0),
+          },
+        ],
+      });
+      // reload operation
+      await load();
+    } catch (e) {
+      console.warn("Failed to add line", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) return <div className="p-8">Loading…</div>;
@@ -219,7 +254,10 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
                 </button>
               )}
               {receipt.status === "Done" && (
-                <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:text-slate-200">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:text-slate-200"
+                >
                   <Printer size={16} /> Print
                 </button>
               )}
@@ -290,23 +328,6 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
                 value={receipt.operationType}
                 readOnly
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-300"
-              />
-            </label>
-
-            <label className="space-y-2">
-              <span className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
-                Source Document
-              </span>
-              <input
-                value={receipt.sourceDocument || ""}
-                onChange={(e) =>
-                  setReceipt((prev) => ({
-                    ...prev,
-                    sourceDocument: e.target.value,
-                  }))
-                }
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 focus:border-slate-400 focus:outline-none dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-200"
-                placeholder="Vendor Bill #"
               />
             </label>
 
@@ -386,24 +407,130 @@ export default function ReceiptsDetail({ theme, onToggleTheme }) {
                 {receipt.lines.map((line) => (
                   <tr key={line.id}>
                     <td className="px-6 py-3 font-medium text-slate-800 dark:text-slate-100">
-                      {line.product}
+                      {/* If this is a temporary line (new), show a product select */}
+                      {typeof line.id === "string" &&
+                      line.id.startsWith("line-") ? (
+                        <select
+                          value={line.product_id || ""}
+                          onChange={(e) =>
+                            setReceipt((prev) => ({
+                              ...prev,
+                              lines: prev.lines.map((ln) =>
+                                ln.id === line.id
+                                  ? {
+                                      ...ln,
+                                      product_id: Number(e.target.value),
+                                      product:
+                                        (
+                                          products.find(
+                                            (p) =>
+                                              p.id === Number(e.target.value)
+                                          ) || {}
+                                        ).name || "",
+                                    }
+                                  : ln
+                              ),
+                            }))
+                          }
+                          className="w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                        >
+                          <option value="">Select product</option>
+                          {products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        line.product
+                      )}
                     </td>
                     <td className="px-6 py-3 text-slate-500 dark:text-slate-400">
                       {line.uom}
                     </td>
                     <td className="px-6 py-3 text-slate-500 dark:text-slate-400">
-                      {line.scheduledQty}
+                      {typeof line.id === "string" &&
+                      line.id.startsWith("line-") ? (
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.scheduledQty}
+                          onChange={(e) =>
+                            setReceipt((prev) => ({
+                              ...prev,
+                              lines: prev.lines.map((ln) =>
+                                ln.id === line.id
+                                  ? {
+                                      ...ln,
+                                      scheduledQty: Number(e.target.value),
+                                    }
+                                  : ln
+                              ),
+                            }))
+                          }
+                          className="w-32 rounded-2xl border border-slate-200 px-3 py-2 text-sm"
+                        />
+                      ) : (
+                        line.scheduledQty
+                      )}
                     </td>
                     <td className="px-6 py-3">
-                      <input
-                        type="number"
-                        min={0}
-                        value={line.doneQty}
-                        onChange={(e) =>
-                          updateLine(line.id, "doneQty", e.target.value)
-                        }
-                        className="w-32 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
-                      />
+                      {typeof line.id === "string" &&
+                      line.id.startsWith("line-") ? (
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={line.doneQty}
+                            onChange={(e) =>
+                              setReceipt((prev) => ({
+                                ...prev,
+                                lines: prev.lines.map((ln) =>
+                                  ln.id === line.id
+                                    ? { ...ln, doneQty: Number(e.target.value) }
+                                    : ln
+                                ),
+                              }))
+                            }
+                            className="w-28 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                          />
+                          <button
+                            onClick={() =>
+                              saveNewLine(
+                                line.id,
+                                line.product_id,
+                                line.scheduledQty
+                              )
+                            }
+                            className="rounded-xl px-3 py-1 text-sm bg-emerald-600 text-white"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() =>
+                              setReceipt((prev) => ({
+                                ...prev,
+                                lines: prev.lines.filter(
+                                  (ln) => ln.id !== line.id
+                                ),
+                              }))
+                            }
+                            className="rounded-xl px-3 py-1 text-sm border"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.doneQty}
+                          onChange={(e) =>
+                            updateLine(line.id, "doneQty", e.target.value)
+                          }
+                          className="w-32 rounded-2xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-slate-400 focus:outline-none dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-100"
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

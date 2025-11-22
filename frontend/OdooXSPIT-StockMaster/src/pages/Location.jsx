@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import NavBar from "../components/NavBar";
+import { getToken } from "../lib/api";
 
 function FormField({
   label,
@@ -72,7 +73,9 @@ export default function Location({ theme, onToggleTheme }) {
 
   async function loadWarehouses() {
     try {
-      const res = await fetch(`${API_BASE}/warehouses`);
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API_BASE}/warehouses`, { headers });
       if (!res.ok) throw new Error(`Failed to load warehouses (${res.status})`);
       const data = await res.json();
       setWarehouses(data || []);
@@ -87,7 +90,9 @@ export default function Location({ theme, onToggleTheme }) {
       setMessage(null);
     }
     try {
-      const res = await fetch(`${API_BASE}/locations`);
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API_BASE}/locations`, { headers });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setLocations(data || []);
@@ -111,12 +116,14 @@ export default function Location({ theme, onToggleTheme }) {
       });
       setOriginal({ ...obj });
     } else {
-      fetch(`${API_BASE}/locations/${id}`)
+      const token = getToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      fetch(`${API_BASE}/locations/${id}`, { headers })
         .then((r) => r.json())
         .then((d) => {
           setForm({
             name: d.name || "",
-            short_code: "",
+            short_code: d.short_code || "",
             warehouse_id: d.warehouse_id || null,
           });
           setOriginal({ ...d });
@@ -168,17 +175,19 @@ export default function Location({ theme, onToggleTheme }) {
     setMessage(null);
     try {
       const payload = { name: form.name || "", type: "internal" };
+      const token = getToken();
+      const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
       let res;
       if (selectedId) {
         res = await fetch(`${API_BASE}/locations/${selectedId}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
         });
       } else {
         res = await fetch(`${API_BASE}/locations/`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...authHeader },
           body: JSON.stringify(payload),
         });
       }

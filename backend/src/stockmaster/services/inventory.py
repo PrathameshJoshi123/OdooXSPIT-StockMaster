@@ -170,6 +170,21 @@ def update_operation(db: Session, operation_id: int, changes: dict) -> models.St
                     ln.done_qty = float(id_map[ln.id]["done_qty"])
                 except Exception:
                     ln.done_qty = id_map[ln.id]["done_qty"]
+        # allow adding new lines when client provides entries without an `id`
+        from decimal import Decimal
+        for l in changes["lines"]:
+            if l.get("id") is None and l.get("product_id") is not None:
+                try:
+                    demand = Decimal(str(l.get("demand_qty") if l.get("demand_qty") is not None else l.get("demand") if l.get("demand") is not None else 0))
+                except Exception:
+                    demand = Decimal(0)
+                opl = models.StockOperationLine(
+                    operation_id=op.id,
+                    product_id=int(l.get("product_id")),
+                    demand_qty=demand,
+                    done_qty=Decimal(0),
+                )
+                db.add(opl)
 
     db.add(op)
     db.commit()

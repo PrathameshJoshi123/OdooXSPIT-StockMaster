@@ -304,7 +304,13 @@ export default function Receipts({ theme, onToggleTheme }) {
                           {o.dest_location_name || ""}
                         </td>
                         <td className="px-4 py-3 align-top text-sm text-emerald-600">
-                          {o.partner_name || ""}
+                          {(partners || []).find(
+                            (p) =>
+                              p.id === o.partner_id &&
+                              p.partner_type === "vendor"
+                          )?.name ||
+                            o.partner_name ||
+                            ""}
                         </td>
                         <td className="px-4 py-3 align-top text-sm text-slate-500 dark:text-slate-400">
                           {o.scheduled_date
@@ -366,7 +372,13 @@ export default function Receipts({ theme, onToggleTheme }) {
                                 {o.reference}
                               </div>
                               <div className="text-xs text-slate-500">
-                                {o.partner_name || o.source_location_name}
+                                {(partners || []).find(
+                                  (p) =>
+                                    p.id === o.partner_id &&
+                                    p.partner_type === "vendor"
+                                )?.name ||
+                                  o.partner_name ||
+                                  o.source_location_name}
                               </div>
                             </div>
                             <div className="text-xs text-slate-400">

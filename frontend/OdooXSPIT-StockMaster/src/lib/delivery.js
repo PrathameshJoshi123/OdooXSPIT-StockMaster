@@ -30,15 +30,18 @@ export async function getOperation(operationId) {
 }
 
 export async function checkOperation(operationId) {
-  return postJSON(`/operations/${operationId}/check`, {});
+  const token = getToken();
+  return postJSON(`/operations/${operationId}/check`, {}, token);
 }
 
 export async function validateOperation(operationId) {
-  return postJSON(`/operations/${operationId}/validate`, {});
+  const token = getToken();
+  return postJSON(`/operations/${operationId}/validate`, {}, token);
 }
 
 export async function createOperation(opData) {
-  return postJSON(`/operations`, opData);
+  const token = getToken();
+  return postJSON(`/operations`, opData, token);
 }
 
 export async function patchOperation(operationId, data) {
@@ -60,8 +63,11 @@ export default {
   checkOperation,
   validateOperation,
   createOperation,
+  createReceipt,
+  patchOperation,
 };
 
 export async function createReceipt(opData) {
-  return postJSON(`/operations/receipts`, opData);
+  const token = getToken();
+  return postJSON(`/operations/receipts`, opData, token);
 }
