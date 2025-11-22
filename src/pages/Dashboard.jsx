@@ -1,73 +1,70 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Download, Truck } from "lucide-react";
 import ActionCard from "../components/ActionCard";
 
-// Mock data structured for easy replacement by API calls later
-const mockData = {
-  receipts: {
-    toReceive: 4,
-    late: 1,
-    future: 6,
-  },
-  deliveries: {
-    toDeliver: 4,
-    late: 1,
-    waiting: 2,
-    future: 6,
-  },
+const deliveriesMock = {
+  toDeliver: 4,
+  late: 1,
+  waiting: 2,
+  future: 6,
 };
 
-const cardConfig = [
-  {
-    key: "receipts",
-    title: "Incoming Receipts",
-    icon: Download,
-    chip: "Inbound Flow",
-    subtitle: "Track docks, ASN, and late arrivals",
-    primary: `${mockData.receipts.toReceive} To Receive`,
-    gradient: "bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-500",
-    stats: [
+export default function Dashboard({ pendingReceipts = 0, onViewReceipts }) {
+  const cardConfig = useMemo(
+    () => [
       {
-        label: "Late",
-        value: mockData.receipts.late,
-        className: "text-red-500",
+        key: "receipts",
+        title: "Incoming Receipts",
+        icon: Download,
+        chip: "Inbound Flow",
+        subtitle: "Track docks, ASN, and late arrivals",
+        primary: `${pendingReceipts} To Receive`,
+        gradient: "bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-500",
+        stats: [
+          {
+            label: "Late",
+            value: Math.max(1, Math.floor(pendingReceipts / 3)),
+            className: "text-red-500",
+          },
+          {
+            label: "Future Operations",
+            value: Math.max(pendingReceipts + 2, 6),
+            className: "text-slate-500 dark:text-slate-300",
+          },
+        ],
+        onPrimaryAction: onViewReceipts,
       },
       {
-        label: "Future Operations",
-        value: mockData.receipts.future,
-        className: "text-slate-500 dark:text-slate-300",
+        key: "deliveries",
+        title: "Delivery Orders",
+        icon: Truck,
+        chip: "Outbound Flow",
+        subtitle: "Monitor pick, pack, and carrier handoffs",
+        primary: `${deliveriesMock.toDeliver} To Deliver`,
+        gradient:
+          "bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400",
+        stats: [
+          {
+            label: "Late",
+            value: deliveriesMock.late,
+            className: "text-red-500",
+          },
+          {
+            label: "Waiting",
+            value: deliveriesMock.waiting,
+            className: "text-orange-400",
+          },
+          {
+            label: "Future Operations",
+            value: deliveriesMock.future,
+            className: "text-slate-500 dark:text-slate-300",
+          },
+        ],
       },
     ],
-  },
-  {
-    key: "deliveries",
-    title: "Delivery Orders",
-    icon: Truck,
-    chip: "Outbound Flow",
-    subtitle: "Monitor pick, pack, and carrier handoffs",
-    primary: `${mockData.deliveries.toDeliver} To Deliver`,
-    gradient: "bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-400",
-    stats: [
-      {
-        label: "Late",
-        value: mockData.deliveries.late,
-        className: "text-red-500",
-      },
-      {
-        label: "Waiting",
-        value: mockData.deliveries.waiting,
-        className: "text-orange-400",
-      },
-      {
-        label: "Future Operations",
-        value: mockData.deliveries.future,
-        className: "text-slate-500 dark:text-slate-300",
-      },
-    ],
-  },
-];
+    [pendingReceipts, onViewReceipts]
+  );
 
-export default function Dashboard() {
   return (
     <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
       <header className="max-w-3xl">
@@ -94,6 +91,7 @@ export default function Dashboard() {
               primaryLabel={card.primary}
               primaryGradient={card.gradient}
               stats={card.stats}
+              onPrimaryAction={card.onPrimaryAction}
             />
           </div>
         ))}

@@ -9,6 +9,7 @@ export default function ActionCard({
   subtitle,
   stats,
   chipLabel,
+  onPrimaryAction,
 }) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-slate-100 bg-white/90 p-6 shadow-xl shadow-slate-200 transition hover:-translate-y-1 hover:shadow-2xl dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-slate-900/40">
@@ -36,7 +37,10 @@ export default function ActionCard({
           </div>
 
           <button
-            className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:translate-y-0.5 ${primaryGradient}`}
+            onClick={onPrimaryAction}
+            className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition hover:translate-y-0.5 ${primaryGradient} ${
+              onPrimaryAction ? "cursor-pointer" : "cursor-default"
+            }`}
           >
             {primaryLabel}
           </button>

@@ -27,8 +27,13 @@ export default function NavBar({
   const settingsRef = useRef(null);
   useOutsideAlerter(opsRef, () => setOpsOpen(false));
   useOutsideAlerter(settingsRef, () => setSettingsOpen(false));
-  const settingsRoutes = ["settings-warehouse", "settings-location"];
-  const isSettingsActive = settingsRoutes.includes(activeRoute);
+  const currentRoute = activeRoute || "";
+  const settingsRoutes = ["/settings/warehouse", "/settings/location"];
+  const isSettingsActive = settingsRoutes.some((path) =>
+    currentRoute.startsWith(path)
+  );
+  const isOperationsActive = currentRoute.startsWith("/operations");
+  const isActive = (path) => currentRoute === path;
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/60 bg-white/80 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/70">
@@ -46,9 +51,9 @@ export default function NavBar({
 
             <nav className="hidden lg:flex items-center gap-1 text-sm font-medium">
               <button
-                onClick={() => onNavigate("dashboard")}
+                onClick={() => onNavigate("/dashboard")}
                 className={`rounded-full px-4 py-2 transition ${
-                  activeRoute === "dashboard"
+                  isActive("/dashboard")
                     ? "bg-slate-900 text-white shadow-lg shadow-slate-300 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/50"
                     : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
                 }`}
@@ -59,7 +64,11 @@ export default function NavBar({
               <div className="relative" ref={opsRef}>
                 <button
                   onClick={() => setOpsOpen((v) => !v)}
-                  className="rounded-full px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-white inline-flex items-center gap-2 transition dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                  className={`rounded-full px-4 py-2 inline-flex items-center gap-2 transition ${
+                    isOperationsActive
+                      ? "bg-slate-900 text-white shadow-lg shadow-slate-300 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/50"
+                      : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                  }`}
                 >
                   Operations
                   <ChevronDown size={16} />
@@ -72,13 +81,20 @@ export default function NavBar({
                   }`}
                 >
                   {[
-                    { label: "Receipts", route: "receipts" },
-                    { label: "Deliveries", route: "deliveries" },
-                    { label: "Inventory Adjustments", route: "adjustments" },
+                    { label: "Receipts", route: "/operations/receipts" },
+                    { label: "Deliveries", route: "/operations/deliveries" },
+                    {
+                      label: "Inventory Adjustments",
+                      route: "/operations/adjustments",
+                    },
                   ].map((item) => (
                     <button
                       key={item.route}
-                      className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                      className={`w-full rounded-xl px-4 py-2 text-left text-sm transition ${
+                        currentRoute.startsWith(item.route)
+                          ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                      }`}
                       onClick={() => {
                         setOpsOpen(false);
                         onNavigate(item.route);
@@ -91,14 +107,22 @@ export default function NavBar({
               </div>
 
               <button
-                onClick={() => onNavigate("stock")}
-                className="rounded-full px-4 py-2 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                onClick={() => onNavigate("/stock")}
+                className={`rounded-full px-4 py-2 transition ${
+                  isActive("/stock")
+                    ? "bg-slate-900 text-white shadow-lg shadow-slate-300 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/50"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                }`}
               >
                 Stock
               </button>
               <button
-                onClick={() => onNavigate("history")}
-                className="rounded-full px-4 py-2 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                onClick={() => onNavigate("/history")}
+                className={`rounded-full px-4 py-2 transition ${
+                  isActive("/history")
+                    ? "bg-slate-900 text-white shadow-lg shadow-slate-300 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/50"
+                    : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                }`}
               >
                 Move History
               </button>
@@ -124,12 +148,12 @@ export default function NavBar({
                   {[
                     {
                       label: "Warehouse",
-                      route: "settings-warehouse",
+                      route: "/settings/warehouse",
                       helper: "Create or edit warehouse records",
                     },
                     {
                       label: "Location",
-                      route: "settings-location",
+                      route: "/settings/location",
                       helper: "Manage aisles, rooms, or bin locations",
                     },
                   ].map((item) => (
