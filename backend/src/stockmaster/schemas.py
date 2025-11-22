@@ -43,6 +43,20 @@ class ProductBase(BaseModel):
     min_stock_level: Optional[int] = 0
 
 
+class ProductCreate(ProductBase):
+    uom: Optional[str] = None
+    initial_stock: Optional[float] = None
+
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    category: Optional[str] = None
+    unit_price: Optional[float] = None
+    min_stock_level: Optional[int] = None
+    uom: Optional[str] = None
+
+
 class ProductOut(ProductBase):
     id: int
     created_at: Optional[datetime]

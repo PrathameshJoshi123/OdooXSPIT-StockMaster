@@ -4,7 +4,7 @@ import logging
 from fastapi import FastAPI
 
 from .database import init_db
-from .api.routers import auth as auth_router, operations as operations_router, dashboard as dashboard_router
+from .api.routers import auth as auth_router, operations as operations_router, dashboard as dashboard_router, products as products_router
 
 
 app = FastAPI(title="StockMaster")
@@ -20,3 +20,4 @@ def on_startup():
 app.include_router(auth_router.router)
 app.include_router(operations_router.router)
 app.include_router(dashboard_router.router)
+app.include_router(products_router.router)

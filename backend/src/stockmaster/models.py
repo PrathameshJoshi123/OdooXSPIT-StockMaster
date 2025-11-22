@@ -51,6 +51,7 @@ class Product(Base):
     name = Column(String(255), nullable=False)
     sku = Column(String(128), unique=True, nullable=False, index=True)
     category = Column(String(128), nullable=True)
+    uom = Column(String(64), nullable=True)
     unit_price = Column(Numeric(12, 2), nullable=True)
     min_stock_level = Column(Integer, default=0, nullable=False)
 
