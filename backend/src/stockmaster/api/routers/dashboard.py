@@ -1,7 +1,7 @@
 """Dashboard router providing simple KPIs."""
 from typing import Optional
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from datetime import datetime
 
@@ -21,43 +21,20 @@ def kpis(
     # Basic counts
     total_products = db.query(models.Product).count()
 
-    # Total on-hand across all products: sum of moves (destinations) minus sum of moves (sources)
-    total_in = (
-        db.query(func.coalesce(func.sum(models.StockMove.quantity), 0))
-        .filter(models.StockMove.dest_loc_id != None)
-    )
-    total_out = (
-        db.query(func.coalesce(func.sum(models.StockMove.quantity), 0))
-        .filter(models.StockMove.source_loc_id != None)
+    # Use StockQuant as the authoritative on-hand snapshot (quantity - reserved_qty)
+    q = (
+        db.query(models.StockQuant.product_id.label("product_id"), func.coalesce(func.sum(models.StockQuant.quantity - models.StockQuant.reserved_qty), 0).label("onhand"))
+        .group_by(models.StockQuant.product_id)
     )
     if warehouse_id is not None:
-        total_in = total_in.filter(models.StockMove.dest_location.has(models.Location.warehouse_id == warehouse_id))
-        total_out = total_out.filter(models.StockMove.source_location.has(models.Location.warehouse_id == warehouse_id))
+        q = q.filter(models.StockQuant.location.has(models.Location.warehouse_id == warehouse_id))
 
-    total_in_val = total_in.scalar() or 0
-    total_out_val = total_out.scalar() or 0
-    total_products_in_stock = float(total_in_val) - float(total_out_val)
+    q_sub = q.subquery()
 
-    # Build per-product on-hand subquery to compute low/out of stock counts
-    q_in = (
-        db.query(models.StockMove.product_id.label("product_id"), func.coalesce(func.sum(models.StockMove.quantity), 0).label("in_qty"))
-        .group_by(models.StockMove.product_id)
-    )
-    q_out = (
-        db.query(models.StockMove.product_id.label("product_id"), func.coalesce(func.sum(models.StockMove.quantity), 0).label("out_qty"))
-        .group_by(models.StockMove.product_id)
-    )
-    if warehouse_id is not None:
-        q_in = q_in.filter(models.StockMove.dest_location.has(models.Location.warehouse_id == warehouse_id))
-        q_out = q_out.filter(models.StockMove.source_location.has(models.Location.warehouse_id == warehouse_id))
-
-    q_in_sub = q_in.subquery()
-    q_out_sub = q_out.subquery()
-
+    # Left-join products to the quant aggregation so products without quants show onhand = 0
     stock_q = (
-        db.query(models.Product.id, (func.coalesce(q_in_sub.c.in_qty, 0) - func.coalesce(q_out_sub.c.out_qty, 0)).label("onhand"))
-        .outerjoin(q_in_sub, q_in_sub.c.product_id == models.Product.id)
-        .outerjoin(q_out_sub, q_out_sub.c.product_id == models.Product.id)
+        db.query(models.Product.id.label("id"), func.coalesce(q_sub.c.onhand, 0).label("onhand"))
+        .outerjoin(q_sub, q_sub.c.product_id == models.Product.id)
     )
     if category is not None:
         stock_q = stock_q.filter(models.Product.category == category)
