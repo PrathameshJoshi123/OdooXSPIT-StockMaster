@@ -129,6 +129,16 @@ class StockOperationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StockOperationUpdate(BaseModel):
+    partner_id: Optional[int] = None
+    scheduled_date: Optional[datetime] = None
+    status: Optional[OperationStatus] = None
+    # Allow updating line done quantities: list of {id: int, done_qty: Decimal}
+    lines: Optional[List[dict]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class StockMoveOut(BaseModel):
     id: int
     product_id: int

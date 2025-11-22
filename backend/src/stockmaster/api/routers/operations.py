@@ -9,13 +9,16 @@ from ...types import OperationType
 from typing import List, Optional
 from sqlalchemy import or_
 from ... import models
+from ...services import inventory as inventory_service
 
 router = APIRouter(prefix="/operations", tags=["operations"])
 
 
 @router.post("/", response_model=schemas.StockOperationOut)
 def create_operation(op_in: schemas.StockOperationCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    op = inventory_service.create_operation(db, op_in)
+    # persist who created the operation
+    user_id = getattr(current_user, "id", None)
+    op = inventory_service.create_operation(db, op_in, created_by_id=user_id)
     db.refresh(op)
     return op
 
@@ -29,7 +32,8 @@ def create_receipt(receipt_in: schemas.StockOperationCreate, db: Session = Depen
         # partner (supplier) should be provided for receipts
         raise HTTPException(status_code=400, detail="partner_id (supplier) is required for receipts")
     op_in = schemas.StockOperationCreate(**data)
-    op = inventory_service.create_operation(db, op_in)
+    user_id = getattr(current_user, "id", None)
+    op = inventory_service.create_operation(db, op_in, created_by_id=user_id)
     db.refresh(op)
     return op
 
@@ -101,6 +105,16 @@ def list_operations(
 @router.get("/{operation_id}", response_model=schemas.StockOperationOut)
 def get_operation(operation_id: int, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
     op = db.query(models.StockOperation).get(operation_id)
+    if not op:
+        raise HTTPException(status_code=404, detail="StockOperation not found")
+    return op
+
+
+
+@router.patch("/{operation_id}", response_model=schemas.StockOperationOut)
+def update_operation(operation_id: int, changes: schemas.StockOperationUpdate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    data = changes.model_dump()
+    op = inventory_service.update_operation(db, operation_id, data)
     if not op:
         raise HTTPException(status_code=404, detail="StockOperation not found")
     return op

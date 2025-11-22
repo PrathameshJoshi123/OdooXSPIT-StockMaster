@@ -27,7 +27,7 @@ def generate_reference(db: Session, operation_type: str) -> str:
         return f"{op_val}/0001"
 
 
-def create_operation(db: Session, op_in: schemas.StockOperationCreate) -> models.StockOperation:
+def create_operation(db: Session, op_in: schemas.StockOperationCreate, created_by_id: Optional[int] = None) -> models.StockOperation:
     # generate a human-readable reference using operation type value
     ref = generate_reference(db, op_in.operation_type)
     op = models.StockOperation(
@@ -39,6 +39,7 @@ def create_operation(db: Session, op_in: schemas.StockOperationCreate) -> models
         # set operation_type and optional partner
         operation_type=op_in.operation_type,
         partner_id=getattr(op_in, "partner_id", None),
+        created_by_id=created_by_id,
     )
     db.add(op)
     db.flush()
@@ -138,6 +139,42 @@ def validate_operation(db: Session, operation_id: int, user_id: Optional[int] = 
     db.add(op)
     db.commit()
     return True, f"Created {len(created)} stock moves"
+
+
+def update_operation(db: Session, operation_id: int, changes: dict) -> models.StockOperation:
+    """Apply partial updates to a StockOperation.
+
+    Supported keys: partner_id, scheduled_date, status, lines (list of {id, done_qty})
+    """
+    op = db.query(models.StockOperation).get(operation_id)
+    if not op:
+        return None
+    if "partner_id" in changes and changes["partner_id"] is not None:
+        op.partner_id = changes["partner_id"]
+    if "scheduled_date" in changes and changes["scheduled_date"] is not None:
+        op.scheduled_date = changes["scheduled_date"]
+    if "status" in changes and changes["status"] is not None:
+        # allow passing either enum or string
+        val = changes["status"]
+        try:
+            op.status = getattr(models.OperationStatus, val) if isinstance(val, str) else val
+        except Exception:
+            op.status = val
+
+    # update lines' done_qty if provided
+    if "lines" in changes and isinstance(changes["lines"], list):
+        id_map = {int(l["id"]): l for l in changes["lines"] if l.get("id") is not None}
+        for ln in op.lines:
+            if ln.id in id_map and id_map[ln.id].get("done_qty") is not None:
+                try:
+                    ln.done_qty = float(id_map[ln.id]["done_qty"])
+                except Exception:
+                    ln.done_qty = id_map[ln.id]["done_qty"]
+
+    db.add(op)
+    db.commit()
+    db.refresh(op)
+    return op
 
 
 def get_current_stock(db: Session, product_id: int, location_id: Optional[int] = None) -> Decimal:

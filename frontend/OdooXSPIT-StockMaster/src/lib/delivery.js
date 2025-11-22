@@ -41,6 +41,18 @@ export async function createOperation(opData) {
   return postJSON(`/operations`, opData);
 }
 
+export async function patchOperation(operationId, data) {
+  const token = getToken();
+  const headers = token
+    ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
+    : { "Content-Type": "application/json" };
+  return api.request(`/operations/${operationId}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(data),
+  });
+}
+
 export default {
   listDeliveryMoves,
   listOperations,
@@ -49,3 +61,7 @@ export default {
   validateOperation,
   createOperation,
 };
+
+export async function createReceipt(opData) {
+  return postJSON(`/operations/receipts`, opData);
+}
