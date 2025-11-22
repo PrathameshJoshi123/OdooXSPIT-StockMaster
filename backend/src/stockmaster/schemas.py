@@ -271,3 +271,21 @@ class ReorderRuleUpdate(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str = Field(..., min_length=8)
+
+    @validator("new_password")
+    def password_policy(cls, v: str) -> str:
+        if not _password_re.match(v):
+            raise ValueError(
+                "Password must contain 1 uppercase, 1 lowercase, 1 digit and 1 special character"
+            )
+        return v
