@@ -15,12 +15,21 @@ function useOutsideAlerter(ref, handler) {
   }, [ref, handler]);
 }
 
-export default function NavBar({ activeRoute, onNavigate, theme, onToggleTheme, onLogout }) {
+export default function NavBar({
+  activeRoute,
+  onNavigate,
+  theme,
+  onToggleTheme,
+  onLogout,
+}) {
   const [opsOpen, setOpsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const opsRef = useRef(null);
+  const settingsRef = useRef(null);
   const userRef = useRef(null);
   useOutsideAlerter(opsRef, () => setOpsOpen(false));
+  useOutsideAlerter(settingsRef, () => setSettingsOpen(false));
   useOutsideAlerter(userRef, () => setUserOpen(false));
 
   return (
@@ -92,12 +101,38 @@ export default function NavBar({ activeRoute, onNavigate, theme, onToggleTheme, 
               >
                 Move History
               </button>
-              <button
-                onClick={() => onNavigate("settings")}
-                className="rounded-full px-4 py-2 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-              >
-                Settings
-              </button>
+              <div className="relative" ref={settingsRef}>
+                <button
+                  onClick={() => setSettingsOpen((v) => !v)}
+                  className="rounded-full px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-white inline-flex items-center gap-2 transition dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                >
+                  Settings
+                  <ChevronDown size={16} />
+                </button>
+                <div
+                  className={`absolute left-0 mt-2 w-56 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-200 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-900 ${
+                    settingsOpen
+                      ? "opacity-100 translate-y-0"
+                      : "pointer-events-none opacity-0 -translate-y-1"
+                  }`}
+                >
+                  {[
+                    { label: "Warehouse", route: "warehouse" },
+                    { label: "Locations", route: "location" },
+                  ].map((item) => (
+                    <button
+                      key={item.route}
+                      className="w-full rounded-xl px-4 py-2 text-left text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        onNavigate(item.route);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </nav>
           </div>
 
@@ -120,7 +155,9 @@ export default function NavBar({ activeRoute, onNavigate, theme, onToggleTheme, 
               </button>
               <div
                 className={`absolute right-0 mt-2 w-48 rounded-2xl border border-slate-100 bg-white p-2 shadow-xl shadow-slate-200 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-900 ${
-                  userOpen ? "opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-1"
+                  userOpen
+                    ? "opacity-100 translate-y-0"
+                    : "pointer-events-none opacity-0 -translate-y-1"
                 }`}
               >
                 <button
