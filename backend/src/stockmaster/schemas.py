@@ -45,6 +45,7 @@ class ProductBase(BaseModel):
 
 class ProductOut(ProductBase):
     id: int
+    created_at: Optional[datetime]
 
     model_config = ConfigDict(from_attributes=True)
 

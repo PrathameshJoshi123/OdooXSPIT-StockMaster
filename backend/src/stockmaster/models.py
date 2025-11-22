@@ -47,6 +47,7 @@ class Product(Base):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     name = Column(String(255), nullable=False)
     sku = Column(String(128), unique=True, nullable=False, index=True)
     category = Column(String(128), nullable=True)

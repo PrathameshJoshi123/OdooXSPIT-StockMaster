@@ -1,9 +1,21 @@
-from logging.config import fileConfig
+import os
+import sys
 
+# ensure project package (the directory that contains `src`) is on sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+# import application helpers so Alembic can use the same DB URL and metadata
+from src.stockmaster.database import get_database_url, metadata as stockmaster_metadata
+
+# import models so declarative tables are registered on Base.metadata
+# (this module import is only for side-effects: registering tables)
+import src.stockmaster.models  # noqa: F401
+
+from logging.config import fileConfig
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-
 from alembic import context
+
 
 # Import application helpers so Alembic can use the same DB URL and metadata
 from src.stockmaster.database import get_database_url, metadata as stockmaster_metadata
@@ -14,6 +26,16 @@ config = context.config
 
 # Ensure Alembic uses the same DATABASE_URL as the app (read from env/.env)
 config.set_main_option("sqlalchemy.url", get_database_url())
+import os, sys
+
+# ensure project package (the directory that contains `src`) is on sys.path
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)
+
+# import models so declarative tables are registered on Base.metadata
+# (this module import is only for side-effects: registering tables)
+import src.stockmaster.models 
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
