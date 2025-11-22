@@ -48,6 +48,11 @@ export default function Warehouse({ theme, onToggleTheme }) {
       navigate("/location");
       return;
     }
+    if (route === "move-history") {
+      setActiveRoute("move-history");
+      navigate("/moves");
+      return;
+    }
     if (route === "stock") {
       setActiveRoute("stock");
       navigate("/stock");

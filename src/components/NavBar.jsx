@@ -94,8 +94,11 @@ export default function NavBar({ activeRoute, onNavigate, theme, onToggleTheme, 
                                 Stock
                             </button>
                             <button
-                                onClick={() => onNavigate("history")}
-                                className="rounded-full px-4 py-2 text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                                onClick={() => onNavigate("move-history")}
+                                className={`rounded-full px-4 py-2 transition ${activeRoute === "move-history"
+                                        ? "bg-slate-900 text-white shadow-lg shadow-slate-300 dark:bg-white dark:text-slate-900 dark:shadow-slate-900/50"
+                                        : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+                                    }`}
                             >
                                 Move History
                             </button>

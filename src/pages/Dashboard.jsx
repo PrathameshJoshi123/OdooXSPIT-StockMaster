@@ -192,6 +192,11 @@ export default function Dashboard({ theme, onToggleTheme }) {
       navigate("/profile");
       return;
     }
+    if (route === "move-history") {
+      setActiveRoute("move-history");
+      navigate("/moves");
+      return;
+    }
     if (route === "stock") {
       setActiveRoute("stock");
       navigate("/stock");

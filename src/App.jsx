@@ -6,6 +6,7 @@ import Warehouse from "./pages/Warehouse";
 import Location from "./pages/Location";
 import Stock from "./pages/Stock";
 import Profile from './pages/Profile.jsx';
+import MoveHistory from "./pages/MoveHistory.jsx";
 import './App.css'
 
 const gradientBg = 'bg-gradient-to-b from-slate-50 via-slate-100 to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-950';
@@ -27,6 +28,7 @@ function AppContent({ theme, toggleTheme }) {
           <Route path="/location" element={<Location theme={theme} onToggleTheme={toggleTheme} />} />
           <Route path="/profile" element={<Profile theme={theme} onToggleTheme={toggleTheme} />} />
           <Route path="/stock" element={<Stock theme={theme} onToggleTheme={toggleTheme} />} />
+          <Route path="/moves" element={<MoveHistory theme={theme} onToggleTheme={toggleTheme} />} />
         </Routes>
       </div>
     </div>
