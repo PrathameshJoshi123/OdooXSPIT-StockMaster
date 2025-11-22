@@ -2,8 +2,9 @@
 
 Matches the exact schema provided by the user.
 """
-import enum
 from datetime import datetime
+
+from .types import LocationType, OperationStatus, OperationType, PartnerType
 
 from sqlalchemy import (
     Column,
@@ -22,30 +23,7 @@ from sqlalchemy.orm import relationship
 from .database import Base
 
 
-class LocationType(enum.Enum):
-    vendor = "vendor"
-    customer = "customer"
-    internal = "internal"
-    inventory_loss = "inventory_loss"
-
-
-class OperationStatus(enum.Enum):
-    draft = "draft"
-    waiting = "waiting"
-    ready = "ready"
-    done = "done"
-
-
-class OperationType(enum.Enum):
-    receipt = "receipt"
-    delivery = "delivery"
-    internal = "internal"
-    adjustment = "adjustment"
-
-
-class PartnerType(enum.Enum):
-    vendor = "vendor"
-    customer = "customer"
+# Enums moved to `types.py` to avoid DB/API circular imports.
 
 
 class User(Base):
