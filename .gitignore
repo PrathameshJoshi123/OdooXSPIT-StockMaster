@@ -1,0 +1,64 @@
+.env
+# Virtual environments
+myenv/
+venv/
+.venv/
+env/
+ENV/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+eggs/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Mypy/Pyright
+.mypy_cache/
+/.pyright/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local sqlite/db files (dev)
+*.sqlite
+*.sqlite3
+*.db
+backend/dev.db
+
+# Logs
+*.log
+
+# dotenv local overrides
+.env.local
+.env.*.local
+
+# Node
+node_modules/
+
+# Alembic/DB migration artifacts (keep migrations themselves)
+# Alembic/DB migration scripts should be tracked (commit your migration .py files).
+# Do NOT ignore `alembic/versions/*.py` — those are the migration history used in CI/deploys.
+# You can ignore compiled python files from that folder though:
+alembic/versions/*.pyc
